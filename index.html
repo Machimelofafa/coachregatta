@@ -11,9 +11,14 @@
 
   <!-- Boat chooser -->
   <label for="boatSelect">Choose a boat:</label>
-  <select id="boatSelect">
-    <option value="" selected disabled>Loading...</option>
+  <select id="boatSelect" disabled>
+    <option>Loading…</option>
   </select>
+
+  <label style="margin-left:2rem">
+    <input type="checkbox" id="rawToggle">
+    Show raw points
+  </label>
 
   <!-- Chart area -->
   <h2 id="chartTitle" style="margin-top:2rem"></h2>
