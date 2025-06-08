@@ -4,13 +4,14 @@
 const RACE = 'dgbr2025';
 const SETUP_URL = `public/${RACE}/RaceSetup.json`;
 const POS_URL   = `public/${RACE}/AllPositions3.json`;
-const MAX_KNOTS   = 25;   // anything faster is discarded as a spike
-const SMOOTH_LEN  = 3;    // 3-point moving-average; set 1 to disable
+const DIST_GLITCH_NM = 2;     // >2 nm jump in one fix = bad GPS
+const SMOOTH_LEN     = 3;     // moving-average window (set 1 = off)
 
 // ---------- DOM refs ----------
 const boatSelect = document.getElementById('boatSelect');
 const chartTitle = document.getElementById('chartTitle');
 const ctx        = document.getElementById('speedChart').getContext('2d');
+const rawToggle  = document.getElementById('rawToggle');
 
 let positionsByBoat = {};       // { id: [ moments … ] }
 let chart;                      // Chart.js instance
@@ -40,11 +41,14 @@ let chart;                      // Chart.js instance
     boats.forEach(b => { positionsByBoat[b.id] = b.moments; });
 
     /* 3.  user interaction --------------------------------------------- */
-    boatSelect.addEventListener('change', () => {
+    boatSelect.addEventListener('change', drawCurrent);
+    rawToggle .addEventListener('change', drawCurrent);
+
+    function drawCurrent () {
       const id   = Number(boatSelect.value);
       const name = boatSelect.selectedOptions[0].text;
-      plotBoat(id, name);
-    });
+      if (id) plotBoat(id, name, !rawToggle.checked);   // true = filtered
+    }
 
   } catch (err) {
     alert('Error initialising page – see console.');
@@ -60,13 +64,12 @@ async function fetchJSON (url) {
   return r.json();
 }
 
-function plotBoat (id, name) {
-  const track = positionsByBoat[id];
-  if (!track) { alert('No data for this boat'); return; }
+function plotBoat (boatId, boatName, filtered) {
+  const track = positionsByBoat[boatId];
+  if (!track) return;
 
-  const { sogKn, vmgKn, labels } = computeSeries(track);
-
-  chartTitle.textContent = `${name} – Speed & VMG`;
+  const { sogKn, vmgKn, labels } = computeSeries(track, filtered);
+  chartTitle.textContent = `${boatName} – Speed & VMG (${filtered ? 'filtered' : 'raw'})`;
 
   if (chart) chart.destroy();        // clear old chart
 
@@ -92,41 +95,58 @@ function plotBoat (id, name) {
 /* ---------- maths ---------------------------------------------------- */
 
 
-function computeSeries (rawMoments) {
-  const moms = rawMoments.slice().sort((a, b) => a.at - b.at);   // oldest→newest
+function computeSeries (rawMoments, filtered = true) {
+  /* ---------- PASS 0 : chronological order ---------- */
+  const moms = rawMoments.slice().sort((a, b) => a.at - b.at);
 
-  const speedRaw = [];   // will become speed after spike filter
-  const vmgRaw   = [];
-  const labels   = [];
-
-  const finish = moms[moms.length - 1];
-  const courseBearing = bearingDeg(moms[0], finish);
+  /* ---------- PASS 1 : compute all speeds (no filter yet) ---------- */
+  const speeds   = [];        // track per-leg speed for dynamic ceiling
+  const legs     = [];        // we’ll reuse when filtering
+  const finish   = moms[moms.length - 1];
+  const crs      = bearingDeg(moms[0], finish);
 
   for (let i = 1; i < moms.length; i++) {
-    const A = moms[i - 1];
-    const B = moms[i];
-
+    const A = moms[i - 1], B = moms[i];
     const dtHr = (B.at - A.at) / 3600;
-    if (dtHr <= 0) continue;                       // safety
+    if (dtHr <= 0) continue;
 
-    const distNm = haversineNm(A.lat, A.lon, B.lat, B.lon);
-    const speed  = distNm / dtHr;                 // kn
+    const dist = haversineNm(A.lat, A.lon, B.lat, B.lon);
+    const sog  = dist / dtHr;
 
-    if (speed > MAX_KNOTS) continue;              // spike → skip
+    const brg  = bearingDeg(A, B);
+    const vmg  = sog * Math.cos(deg2rad(brg - crs));
 
-    const brg = bearingDeg(A, B);
-    const vmg = speed * Math.cos(deg2rad(brg - courseBearing));
-
-    speedRaw.push(speed);
-    vmgRaw.push(vmg);
-    labels.push(new Date(B.at * 1000));
+    legs.push({ t:B.at, sog, vmg, dist });
+    speeds.push(sog);
   }
 
-  /* ------- optional tiny smoothing ---------- */
-  const sogKn = smooth(speedRaw, SMOOTH_LEN);
-  const vmgKn = smooth(vmgRaw,   SMOOTH_LEN);
+  /* ---------- dynamic ceiling from median speed ---------- */
+  const median = speeds.slice().sort((x, y) => x - y)[Math.floor(speeds.length / 2)] || 0;
+  const ceilKn = Math.min(25, 2.8 * median);
 
-  return { sogKn, vmgKn, labels };
+  /* ---------- PASS 2 : build final arrays with chosen filter ---------- */
+  const sogArr = [], vmgArr = [], labels = [];
+
+  legs.forEach(({ t, sog, vmg, dist }) => {
+    const keep = !filtered
+      || (sog <= ceilKn && dist <= DIST_GLITCH_NM);
+
+    if (keep) {
+      sogArr.push(sog);
+      vmgArr.push(vmg);
+      labels.push(new Date(t * 1000));
+    }
+  });
+
+  /* ---------- optional smoothing ---------- */
+  if (filtered && SMOOTH_LEN > 1) {
+    return {
+      sogKn : smooth(sogArr, SMOOTH_LEN),
+      vmgKn : smooth(vmgArr, SMOOTH_LEN),
+      labels
+    };
+  }
+  return { sogKn: sogArr, vmgKn: vmgArr, labels };
 }
 
 /* helper: centred moving-average (len must be odd) */
