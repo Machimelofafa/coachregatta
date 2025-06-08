@@ -179,7 +179,7 @@ function plotClass (classKey, filtered) {
     data:{ datasets },
     options:{
       responsive:true,
-      parsing:false,
+      // parsing:false,
       scales:{
         x:{ type:'time', time:{ unit:'hour' } },
         y:{ title:{ display:true, text:'knots' } }
