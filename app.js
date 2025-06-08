@@ -72,7 +72,7 @@ function plotBoat (boatId, boatName, filtered) {
   if (!track) return;
 
   const { sogKn, labels } = computeSeries(track, filtered);
-  const sectorTimes = computeSectorTimes(track);
+  const sectorInfo = computeSectorTimes(track);
   chartTitle.textContent = `${boatName} – Speed (${filtered ? 'filtered' : 'raw'})`;
 
   if (chart) chart.destroy();        // clear old chart
@@ -92,7 +92,11 @@ function plotBoat (boatId, boatName, filtered) {
         y:{ title:{ display:true, text:'knots' } }
       },
       plugins:{
-        sectors:{ times: sectorTimes }
+        sectors:{
+          times : sectorInfo.times,
+          labels: sectorInfo.labels,
+          mids  : sectorInfo.mids
+        }
       }
     },
     plugins: [sectorPlugin]
@@ -186,28 +190,45 @@ function bearingDeg (p1,p2){
 
 // Derive approximate times when the boat reaches each course node
 function computeSectorTimes (moments) {
-  if (!courseNodes.length) return [];
+  if (!courseNodes.length) return { times: [], labels: [], mids: [] };
   const moms = moments.slice().sort((a, b) => a.at - b.at);
-  const times = [];
+  const times  = [];
+  const labels = [];
+  const mids   = [];
+
+  let prevTime = moms[0]?.at || 0;
+  let prevName = courseNodes[0].name || 'Start';
+
   for (let i = 1; i < courseNodes.length; i++) {
-    const { lat, lon } = courseNodes[i];
+    const node     = courseNodes[i];
+    const { lat, lon } = node;
     let best = { dist: Infinity, at: null };
     moms.forEach(m => {
       const d = haversineNm(lat, lon, m.lat, m.lon);
       if (d < best.dist) best = { dist: d, at: m.at };
     });
-    if (best.at !== null) times.push(best.at);
+    if (best.at !== null) {
+      times.push(best.at);
+      mids.push((prevTime + best.at) / 2);
+      const currName = node.name || (i === courseNodes.length - 1 ? 'Finish' : `WP${i+1}`);
+      labels.push(`${prevName} – ${currName}`);
+      prevTime = best.at;
+      prevName = currName;
+    }
   }
-  return times;
+  return { times, labels, mids };
 }
 
 // Plugin to draw dashed vertical lines at sector times
 const sectorPlugin = {
   id: 'sectors',
   afterDraw (chart, args, opts) {
-    const times = opts.times || [];
+    const times  = opts.times  || [];
+    const labels = opts.labels || [];
+    const mids   = opts.mids   || [];
     if (!times.length) return;
     const { ctx, scales: { x, y } } = chart;
+
     ctx.save();
     ctx.strokeStyle = 'rgba(0,0,0,0.5)';
     ctx.setLineDash([4, 4]);
@@ -217,6 +238,18 @@ const sectorPlugin = {
       ctx.moveTo(px, y.top);
       ctx.lineTo(px, y.bottom);
       ctx.stroke();
+    });
+    ctx.restore();
+
+    // draw sector labels at midpoints
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    mids.forEach((t, i) => {
+      const px = x.getPixelForValue(new Date(t * 1000));
+      ctx.fillText(labels[i] || '', px, y.top + 4);
     });
     ctx.restore();
   }
