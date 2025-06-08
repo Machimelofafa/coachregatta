@@ -121,6 +121,13 @@ async function fetchJSON (url) {
   return r.json();
 }
 
+// Generate a distinct colour for each dataset
+function getColor (idx, total) {
+  // Spread hues 0-360°, keep good saturation & lightness
+  const hue = (idx * 360 / total) % 360;
+  return `hsl(${hue}, 70%, 50%)`;
+}
+
 function plotBoat (boatId, boatName, filtered) {
   const track = positionsByBoat[boatId];
   if (!track) return;
@@ -142,10 +149,45 @@ function plotBoat (boatId, boatName, filtered) {
     options : {
       responsive:true,
       scales:{
-        x:{ type:'time', time:{ unit:'hour' } },
-        y:{ title:{ display:true, text:'knots' } }
+        x:{
+          type:'time',
+          time:{ unit:'hour' },
+          grid:{ color:'rgba(0,0,0,0.06)', borderDash:[4,2] }
+        },
+        y:{
+          title:{ display:true, text:'knots' },
+          grid:{ color:'rgba(0,0,0,0.06)', borderDash:[4,2] }
+        }
       },
+      interaction:{ mode:'nearest', intersect:false },
       plugins:{
+        legend:{
+          onClick:(e, item, legend)=>{
+            const {chart} = legend;
+            if (e.native.shiftKey) {
+              chart.data.datasets.forEach((ds, i) => {
+                const meta = chart.getDatasetMeta(i);
+                meta.hidden = i === item.datasetIndex ? null : true;
+              });
+            } else {
+              const meta = chart.getDatasetMeta(item.datasetIndex);
+              meta.hidden = !meta.hidden;
+            }
+            chart.update();
+          }
+        },
+        zoom:{
+          zoom:{
+            wheel:{ enabled:true },
+            pinch:{ enabled:true },
+            mode:'x'
+          },
+          pan:{
+            enabled:true,
+            mode:'x'
+          },
+          limits:{ x:{ min:'original', max:'original' } }
+        },
         sectors:{
           times : sectorInfo.times,
           labels: sectorInfo.labels,
@@ -161,12 +203,26 @@ function plotClass (classKey, filtered) {
   const info = classInfo[classKey];
   if (!info) return;
   const datasets = [];
-  info.boats.forEach(id => {
-    const track = positionsByBoat[id];
+  const boatsArr = info.boats.slice();
+  const total = boatsArr.length;
+
+  boatsArr.forEach((boatId, i) => {
+    const track = positionsByBoat[boatId];
     if (!track) return;
     const { sogKn, labels } = computeSeries(track, filtered);
-    const data = labels.map((t, i) => ({ x: t, y: sogKn[i] }));
-    datasets.push({ label: boatNames[id] || `Boat ${id}`, data, borderWidth:1, tension:0.2 });
+    const color = getColor(i, total);
+
+    datasets.push({
+      label : boatNames[boatId] || `Boat ${boatId}`,
+      data  : labels.map((t, j) => ({ x: t, y: sogKn[j] })),
+      borderColor      : color,
+      backgroundColor  : color,
+      borderWidth      : 1,
+      pointRadius      : 0,
+      pointHoverRadius : 4,
+      spanGaps         : true,
+      cubicInterpolationMode: 'monotone'
+    });
   });
   const sectorInfo = info.boats.length ? computeSectorTimes(positionsByBoat[info.boats[0]])
                                        : { times:[], labels:[], mids:[] };
@@ -181,10 +237,45 @@ function plotClass (classKey, filtered) {
       responsive:true,
       // parsing:false,
       scales:{
-        x:{ type:'time', time:{ unit:'hour' } },
-        y:{ title:{ display:true, text:'knots' } }
+        x:{
+          type:'time',
+          time:{ unit:'hour' },
+          grid:{ color:'rgba(0,0,0,0.06)', borderDash:[4,2] }
+        },
+        y:{
+          title:{ display:true, text:'knots' },
+          grid:{ color:'rgba(0,0,0,0.06)', borderDash:[4,2] }
+        }
       },
+      interaction:{ mode:'nearest', intersect:false },
       plugins:{
+        legend:{
+          onClick:(e, item, legend)=>{
+            const {chart} = legend;
+            if (e.native.shiftKey) {
+              chart.data.datasets.forEach((ds, i) => {
+                const meta = chart.getDatasetMeta(i);
+                meta.hidden = i === item.datasetIndex ? null : true;
+              });
+            } else {
+              const meta = chart.getDatasetMeta(item.datasetIndex);
+              meta.hidden = !meta.hidden;
+            }
+            chart.update();
+          }
+        },
+        zoom:{
+          zoom:{
+            wheel:{ enabled:true },
+            pinch:{ enabled:true },
+            mode:'x'
+          },
+          pan:{
+            enabled:true,
+            mode:'x'
+          },
+          limits:{ x:{ min:'original', max:'original' } }
+        },
         sectors:{
           times : sectorInfo.times,
           labels: sectorInfo.labels,
