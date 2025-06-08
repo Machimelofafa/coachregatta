@@ -35,6 +35,7 @@ async function init () {
       .filter(t => /^IRC /i.test(t.name) && !/Overall|Two Handed/i.test(t.name))
       .forEach(tag => {
         const key = tag.name.toLowerCase().replace(/\s+/g, '').replace('zero', '0');
+        const key = tag.name.toLowerCase().replace(/\s+/g, '').replace('zero','0');
         classInfo[key] = { name: tag.name, id: tag.id, boats: [] };
         const opt = document.createElement('option');
         opt.value = key;
@@ -48,6 +49,8 @@ async function init () {
     } else {
       classSelect.firstElementChild.textContent = 'No classes available';
     }
+    classSelect.disabled = false;
+    classSelect.firstElementChild.textContent = 'Select a class';
 
     // RaceSetup.json holds boats inside `teams`
     setup.teams
