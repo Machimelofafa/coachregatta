@@ -89,25 +89,34 @@ function plotBoat (id, name) {
 
 /* ---------- maths ---------------------------------------------------- */
 
-function computeSeries (moms) {
-  const sogKn=[], vmgKn=[], labels=[];
+function computeSeries (rawMoments) {
+  // --- 1. sort by timestamp -----------------------------------
+  const moms = rawMoments.slice().sort((a, b) => a.at - b.at);   // ascending
 
-  const finish = moms[moms.length-1];
-  const crs    = bearingDeg(moms[0], finish);
+  const sogKn = [];
+  const vmgKn = [];
+  const labels = [];
 
-  for (let i=1;i<moms.length;i++){
-    const a=moms[i-1], b=moms[i];
-    const dtHr = (b.at-a.at)/3600;
-    if (dtHr<=0) continue;
+  // start = first fix, finish = last fix (for VMG reference)
+  const finish = moms[moms.length - 1];
+  const courseBearing = bearingDeg(moms[0], finish);
 
-    const distNm = haversineNm(a.lat,a.lon,b.lat,b.lon);
-    const speed  = distNm/dtHr;
-    const brg    = bearingDeg(a,b);
-    const vmg    = speed*Math.cos(deg2rad(brg-crs));
+  // --- 2. loop over successive fixes ---------------------------
+  for (let i = 1; i < moms.length; i++) {
+    const a = moms[i - 1];
+    const b = moms[i];
 
-    sogKn.push(speed.toFixed(2));
-    vmgKn.push(vmg.toFixed(2));
-    labels.push(new Date(b.at*1000));
+    const dtHr = (b.at - a.at) / 3600;
+    if (dtHr <= 0) continue;                     // safety
+
+    const distNm = haversineNm(a.lat, a.lon, b.lat, b.lon);
+    const speed  = distNm / dtHr;               // knots
+    const brg    = bearingDeg(a, b);            // deg True
+    const vmg    = speed * Math.cos(deg2rad(brg - courseBearing));
+
+    sogKn.push(+speed.toFixed(2));              // number, not string
+    vmgKn.push(+vmg.toFixed(2));
+    labels.push(new Date(b.at * 1000));         // JS Date object
   }
   return { sogKn, vmgKn, labels };
 }
