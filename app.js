@@ -34,9 +34,12 @@ async function init () {
     (setup.tags || [])
       .filter(t => /^IRC /i.test(t.name) && !/Overall|Two Handed/i.test(t.name))
       .forEach(tag => {
-        const key = tag.name.toLowerCase().replace(/\s+/g, '').replace('zero', '0');
-        const key = tag.name.toLowerCase().replace(/\s+/g, '').replace('zero','0');
+        const key = tag.name
+          .toLowerCase()
+          .replace(/\s+/g, '')
+          .replace('zero', '0');
         classInfo[key] = { name: tag.name, id: tag.id, boats: [] };
+
         const opt = document.createElement('option');
         opt.value = key;
         opt.textContent = tag.name;
