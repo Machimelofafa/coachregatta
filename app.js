@@ -21,8 +21,10 @@ let classInfo = {};             // { key:{ name, boats:[ids] } }
 let boatNames = {};             // id -> name
 
 // ---------- MAIN ----------
-(async function init () {
+async function init () {
   try {
+    boatSelect.value = '';
+    classSelect.value = '';
     /* 1.  metadata  ----------------------------------------------------- */
     const setup = await fetchJSON(SETUP_URL);
 
@@ -32,6 +34,7 @@ let boatNames = {};             // id -> name
     (setup.tags || [])
       .filter(t => /^IRC /i.test(t.name) && !/Overall|Two Handed/i.test(t.name))
       .forEach(tag => {
+        const key = tag.name.toLowerCase().replace(/\s+/g, '').replace('zero', '0');
         const key = tag.name.toLowerCase().replace(/\s+/g, '').replace('zero','0');
         classInfo[key] = { name: tag.name, id: tag.id, boats: [] };
         const opt = document.createElement('option');
@@ -40,6 +43,12 @@ let boatNames = {};             // id -> name
         classSelect.appendChild(opt);
       });
 
+    if (Object.keys(classInfo).length) {
+      classSelect.disabled = false;
+      classSelect.firstElementChild.textContent = 'Select a class';
+    } else {
+      classSelect.firstElementChild.textContent = 'No classes available';
+    }
     classSelect.disabled = false;
     classSelect.firstElementChild.textContent = 'Select a class';
 
@@ -97,12 +106,14 @@ let boatNames = {};             // id -> name
     alert('Error initialising page – see console.');
     console.error(err);
   }
-})();
+}
+
+window.addEventListener('DOMContentLoaded', init);
 
 /* ---------- helpers -------------------------------------------------- */
 
 async function fetchJSON (url) {
-  const r = await fetch(url);
+  const r = await fetch(url).catch(err => { throw new Error(`${url}: ${err}`); });
   if (!r.ok) throw new Error(`${url}: ${r.status}`);
   return r.json();
 }
