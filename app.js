@@ -4,6 +4,8 @@
 const RACE = 'dgbr2025';
 const SETUP_URL = `public/${RACE}/RaceSetup.json`;
 const POS_URL   = `public/${RACE}/AllPositions3.json`;
+const MAX_KNOTS   = 25;   // anything faster is discarded as a spike
+const SMOOTH_LEN  = 3;    // 3-point moving-average; set 1 to disable
 
 // ---------- DOM refs ----------
 const boatSelect = document.getElementById('boatSelect');
@@ -89,38 +91,60 @@ function plotBoat (id, name) {
 
 /* ---------- maths ---------------------------------------------------- */
 
+
 function computeSeries (rawMoments) {
-  // --- 1. sort by timestamp -----------------------------------
-  const moms = rawMoments.slice().sort((a, b) => a.at - b.at);   // ascending
+  const moms = rawMoments.slice().sort((a, b) => a.at - b.at);   // oldest→newest
 
-  const sogKn = [];
-  const vmgKn = [];
-  const labels = [];
+  const speedRaw = [];   // will become speed after spike filter
+  const vmgRaw   = [];
+  const labels   = [];
 
-  // start = first fix, finish = last fix (for VMG reference)
   const finish = moms[moms.length - 1];
   const courseBearing = bearingDeg(moms[0], finish);
 
-  // --- 2. loop over successive fixes ---------------------------
   for (let i = 1; i < moms.length; i++) {
-    const a = moms[i - 1];
-    const b = moms[i];
+    const A = moms[i - 1];
+    const B = moms[i];
 
-    const dtHr = (b.at - a.at) / 3600;
-    if (dtHr <= 0) continue;                     // safety
+    const dtHr = (B.at - A.at) / 3600;
+    if (dtHr <= 0) continue;                       // safety
 
-    const distNm = haversineNm(a.lat, a.lon, b.lat, b.lon);
-    const speed  = distNm / dtHr;               // knots
-    const brg    = bearingDeg(a, b);            // deg True
-    const vmg    = speed * Math.cos(deg2rad(brg - courseBearing));
+    const distNm = haversineNm(A.lat, A.lon, B.lat, B.lon);
+    const speed  = distNm / dtHr;                 // kn
 
-    sogKn.push(+speed.toFixed(2));              // number, not string
-    vmgKn.push(+vmg.toFixed(2));
-    labels.push(new Date(b.at * 1000));         // JS Date object
+    if (speed > MAX_KNOTS) continue;              // spike → skip
+
+    const brg = bearingDeg(A, B);
+    const vmg = speed * Math.cos(deg2rad(brg - courseBearing));
+
+    speedRaw.push(speed);
+    vmgRaw.push(vmg);
+    labels.push(new Date(B.at * 1000));
   }
+
+  /* ------- optional tiny smoothing ---------- */
+  const sogKn = smooth(speedRaw, SMOOTH_LEN);
+  const vmgKn = smooth(vmgRaw,   SMOOTH_LEN);
+
   return { sogKn, vmgKn, labels };
 }
 
+/* helper: centred moving-average (len must be odd) */
+function smooth (arr, len) {
+  if (len < 2) return arr;          // no smoothing
+  const half = Math.floor(len / 2);
+  const out = [];
+  for (let i = 0; i < arr.length; i++) {
+    let sum = 0, cnt = 0;
+    for (let k = -half; k <= half; k++) {
+      const j = i + k;
+      if (j < 0 || j >= arr.length) continue;
+      sum += arr[j]; cnt++;
+    }
+    out.push(+ (sum / cnt).toFixed(2));
+  }
+  return out;
+}
 const R_EARTH_NM = 3440.065;
 const deg2rad = d => d*Math.PI/180;
 const rad2deg = r => r*180/Math.PI;
