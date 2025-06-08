@@ -101,8 +101,8 @@ async function init () {
     }
 
     function drawClass () {
-      const key = classSelect.value;
-      if (key && classInfo[key]) plotClass(key, !rawToggle.checked);
+      const classKey = classSelect.value;
+      if (classKey && classInfo[classKey]) plotClass(classKey, !rawToggle.checked);
     }
 
   } catch (err) {
