@@ -8,14 +8,17 @@ const DIST_GLITCH_NM = 2;     // >2 nm jump in one fix = bad GPS
 const SMOOTH_LEN     = 3;     // moving-average window (set 1 = off)
 
 // ---------- DOM refs ----------
-const boatSelect = document.getElementById('boatSelect');
-const chartTitle = document.getElementById('chartTitle');
-const ctx        = document.getElementById('speedChart').getContext('2d');
-const rawToggle  = document.getElementById('rawToggle');
+const boatSelect  = document.getElementById('boatSelect');
+const classSelect = document.getElementById('classSelect');
+const chartTitle  = document.getElementById('chartTitle');
+const ctx         = document.getElementById('speedChart').getContext('2d');
+const rawToggle   = document.getElementById('rawToggle');
 
 let positionsByBoat = {};       // { id: [ moments … ] }
 let chart;                      // Chart.js instance
 let courseNodes = [];           // course waypoints for sector boundaries
+let classInfo = {};             // { key:{ name, boats:[ids] } }
+let boatNames = {};             // id -> name
 
 // ---------- MAIN ----------
 (async function init () {
@@ -25,6 +28,21 @@ let courseNodes = [];           // course waypoints for sector boundaries
 
     courseNodes = setup.course?.nodes || [];
 
+    // ----- build class list from tags -----
+    (setup.tags || [])
+      .filter(t => /^IRC /i.test(t.name) && !/Overall|Two Handed/i.test(t.name))
+      .forEach(tag => {
+        const key = tag.name.toLowerCase().replace(/\s+/g, '').replace('zero','0');
+        classInfo[key] = { name: tag.name, id: tag.id, boats: [] };
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = tag.name;
+        classSelect.appendChild(opt);
+      });
+
+    classSelect.disabled = false;
+    classSelect.firstElementChild.textContent = 'Select a class';
+
     // RaceSetup.json holds boats inside `teams`
     setup.teams
          .sort((a, b) => a.name.localeCompare(b.name))
@@ -33,6 +51,13 @@ let courseNodes = [];           // course waypoints for sector boundaries
            o.value   = team.id;          // numeric ID
            o.textContent = team.name;    // friendly name
            boatSelect.appendChild(o);
+
+           boatNames[team.id] = team.name;
+           const tags = team.tags || [];
+           Object.keys(classInfo).forEach(k => {
+             const cid = classInfo[k].id;
+             if (tags.includes(cid)) classInfo[k].boats.push(team.id);
+           });
          });
 
     boatSelect.disabled = false;
@@ -44,13 +69,28 @@ let courseNodes = [];           // course waypoints for sector boundaries
     boats.forEach(b => { positionsByBoat[b.id] = b.moments; });
 
     /* 3.  user interaction --------------------------------------------- */
-    boatSelect.addEventListener('change', drawCurrent);
-    rawToggle .addEventListener('change', drawCurrent);
+    boatSelect.addEventListener('change', () => {
+      classSelect.value = '';
+      drawBoat();
+    });
+    classSelect.addEventListener('change', () => {
+      boatSelect.value = '';
+      drawClass();
+    });
+    rawToggle.addEventListener('change', () => {
+      if (boatSelect.value) drawBoat();
+      else if (classSelect.value) drawClass();
+    });
 
-    function drawCurrent () {
+    function drawBoat () {
       const id   = Number(boatSelect.value);
-      const name = boatSelect.selectedOptions[0].text;
+      const name = boatNames[id] || boatSelect.selectedOptions[0].text;
       if (id) plotBoat(id, name, !rawToggle.checked);   // true = filtered
+    }
+
+    function drawClass () {
+      const key = classSelect.value;
+      if (key && classInfo[key]) plotClass(key, !rawToggle.checked);
     }
 
   } catch (err) {
@@ -100,6 +140,45 @@ function plotBoat (boatId, boatName, filtered) {
       }
     },
     plugins: [sectorPlugin]
+  });
+}
+
+function plotClass (classKey, filtered) {
+  const info = classInfo[classKey];
+  if (!info) return;
+  const datasets = [];
+  info.boats.forEach(id => {
+    const track = positionsByBoat[id];
+    if (!track) return;
+    const { sogKn, labels } = computeSeries(track, filtered);
+    const data = labels.map((t, i) => ({ x: t, y: sogKn[i] }));
+    datasets.push({ label: boatNames[id] || `Boat ${id}`, data, borderWidth:1, tension:0.2 });
+  });
+  const sectorInfo = info.boats.length ? computeSectorTimes(positionsByBoat[info.boats[0]])
+                                       : { times:[], labels:[], mids:[] };
+  chartTitle.textContent = `${info.name} – Speed (${filtered ? 'filtered' : 'raw'})`;
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type:'line',
+    data:{ datasets },
+    options:{
+      responsive:true,
+      parsing:false,
+      scales:{
+        x:{ type:'time', time:{ unit:'hour' } },
+        y:{ title:{ display:true, text:'knots' } }
+      },
+      plugins:{
+        sectors:{
+          times : sectorInfo.times,
+          labels: sectorInfo.labels,
+          mids  : sectorInfo.mids
+        }
+      }
+    },
+    plugins:[sectorPlugin]
   });
 }
 
