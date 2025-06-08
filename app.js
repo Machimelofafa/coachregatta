@@ -15,12 +15,15 @@ const rawToggle  = document.getElementById('rawToggle');
 
 let positionsByBoat = {};       // { id: [ moments … ] }
 let chart;                      // Chart.js instance
+let courseNodes = [];           // course waypoints for sector boundaries
 
 // ---------- MAIN ----------
 (async function init () {
   try {
     /* 1.  metadata  ----------------------------------------------------- */
     const setup = await fetchJSON(SETUP_URL);
+
+    courseNodes = setup.course?.nodes || [];
 
     // RaceSetup.json holds boats inside `teams`
     setup.teams
@@ -68,8 +71,9 @@ function plotBoat (boatId, boatName, filtered) {
   const track = positionsByBoat[boatId];
   if (!track) return;
 
-  const { sogKn, vmgKn, labels } = computeSeries(track, filtered);
-  chartTitle.textContent = `${boatName} – Speed & VMG (${filtered ? 'filtered' : 'raw'})`;
+  const { sogKn, labels } = computeSeries(track, filtered);
+  const sectorTimes = computeSectorTimes(track);
+  chartTitle.textContent = `${boatName} – Speed (${filtered ? 'filtered' : 'raw'})`;
 
   if (chart) chart.destroy();        // clear old chart
 
@@ -78,8 +82,7 @@ function plotBoat (boatId, boatName, filtered) {
     data : {
       labels,
       datasets : [
-        { label:'Speed (kn)', data:sogKn, borderWidth:1, tension:0.2 },
-        { label:'VMG (kn)',   data:vmgKn, borderWidth:1, tension:0.2, borderDash:[5,5] }
+        { label:'Speed (kn)', data:sogKn, borderWidth:1, tension:0.2 }
       ]
     },
     options : {
@@ -87,8 +90,12 @@ function plotBoat (boatId, boatName, filtered) {
       scales:{
         x:{ type:'time', time:{ unit:'hour' } },
         y:{ title:{ display:true, text:'knots' } }
+      },
+      plugins:{
+        sectors:{ times: sectorTimes }
       }
-    }
+    },
+    plugins: [sectorPlugin]
   });
 }
 
@@ -102,8 +109,7 @@ function computeSeries (rawMoments, filtered = true) {
   /* ---------- PASS 1 : compute all speeds (no filter yet) ---------- */
   const speeds   = [];        // track per-leg speed for dynamic ceiling
   const legs     = [];        // we’ll reuse when filtering
-  const finish   = moms[moms.length - 1];
-  const crs      = bearingDeg(moms[0], finish);
+  // course bearing not needed without VMG
 
   for (let i = 1; i < moms.length; i++) {
     const A = moms[i - 1], B = moms[i];
@@ -113,10 +119,7 @@ function computeSeries (rawMoments, filtered = true) {
     const dist = haversineNm(A.lat, A.lon, B.lat, B.lon);
     const sog  = dist / dtHr;
 
-    const brg  = bearingDeg(A, B);
-    const vmg  = sog * Math.cos(deg2rad(brg - crs));
-
-    legs.push({ t:B.at, sog, vmg, dist });
+    legs.push({ t:B.at, sog, dist });
     speeds.push(sog);
   }
 
@@ -125,15 +128,14 @@ function computeSeries (rawMoments, filtered = true) {
   const ceilKn = Math.min(25, 2.8 * median);
 
   /* ---------- PASS 2 : build final arrays with chosen filter ---------- */
-  const sogArr = [], vmgArr = [], labels = [];
+  const sogArr = [], labels = [];
 
-  legs.forEach(({ t, sog, vmg, dist }) => {
+  legs.forEach(({ t, sog, dist }) => {
     const keep = !filtered
       || (sog <= ceilKn && dist <= DIST_GLITCH_NM);
 
     if (keep) {
       sogArr.push(sog);
-      vmgArr.push(vmg);
       labels.push(new Date(t * 1000));
     }
   });
@@ -142,11 +144,10 @@ function computeSeries (rawMoments, filtered = true) {
   if (filtered && SMOOTH_LEN > 1) {
     return {
       sogKn : smooth(sogArr, SMOOTH_LEN),
-      vmgKn : smooth(vmgArr, SMOOTH_LEN),
       labels
     };
   }
-  return { sogKn: sogArr, vmgKn: vmgArr, labels };
+  return { sogKn: sogArr, labels };
 }
 
 /* helper: centred moving-average (len must be odd) */
@@ -182,4 +183,42 @@ function bearingDeg (p1,p2){
   const x = Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(λ2-λ1);
   return (rad2deg(Math.atan2(y,x))+360)%360;
 }
+
+// Derive approximate times when the boat reaches each course node
+function computeSectorTimes (moments) {
+  if (!courseNodes.length) return [];
+  const moms = moments.slice().sort((a, b) => a.at - b.at);
+  const times = [];
+  for (let i = 1; i < courseNodes.length; i++) {
+    const { lat, lon } = courseNodes[i];
+    let best = { dist: Infinity, at: null };
+    moms.forEach(m => {
+      const d = haversineNm(lat, lon, m.lat, m.lon);
+      if (d < best.dist) best = { dist: d, at: m.at };
+    });
+    if (best.at !== null) times.push(best.at);
+  }
+  return times;
+}
+
+// Plugin to draw dashed vertical lines at sector times
+const sectorPlugin = {
+  id: 'sectors',
+  afterDraw (chart, args, opts) {
+    const times = opts.times || [];
+    if (!times.length) return;
+    const { ctx, scales: { x, y } } = chart;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.setLineDash([4, 4]);
+    times.forEach(t => {
+      const px = x.getPixelForValue(new Date(t * 1000));
+      ctx.beginPath();
+      ctx.moveTo(px, y.top);
+      ctx.lineTo(px, y.bottom);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+};
 
