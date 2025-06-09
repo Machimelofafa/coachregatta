@@ -33,3 +33,8 @@ export interface SectorStat {
   distance: number;
   avgSpeed: number;
 }
+
+export interface BoatStats {
+  maxSpeed: number;
+  avgSpeed: number;
+}

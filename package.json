@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "test": "tsx test/computeSeries.test.ts && tsx test/parsePositions.test.ts && tsx test/chart-contrast.test.ts",
+    "test": "tsx test/computeSeries.test.ts && tsx test/parsePositions.test.ts && tsx test/calculateBoatStatistics.test.ts && tsx test/chart-contrast.test.ts",
     "dev": "vite",
     "build": "vite build",
     "type-check": "tsc --noEmit"
