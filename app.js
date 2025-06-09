@@ -1,9 +1,8 @@
 /* global Chart */
-import { parsePositions } from './parsePositions.mjs';
+import { parsePositions } from "./parsePositions.mjs";
+import { computeSeries, DEFAULT_SETTINGS, clearCache } from "./speedUtils.mjs";
 
 // ---------- CONFIG ----------
-const DIST_GLITCH_NM = 2;     // >2 nm jump in one fix = bad GPS
-const SMOOTH_LEN     = 3;     // moving-average window (set 1 = off)
 
 // ---------- DOM refs ----------
 const boatSelect  = document.getElementById('boatSelect');
@@ -13,6 +12,11 @@ const raceTitle   = document.getElementById('raceTitle');
 const chartTitle  = document.getElementById('chartTitle');
 const ctx         = document.getElementById('speedChart').getContext('2d');
 const rawToggle   = document.getElementById('rawToggle');
+const distInput = document.getElementById("distInput");
+const percentileInput = document.getElementById("percentileInput");
+const settings = loadSettings();
+distInput.value = settings.distNm;
+percentileInput.value = settings.percentile;
 
 let positionsByBoat = {};       // { id: [ moments … ] }
 let chart;                      // Chart.js instance
@@ -169,7 +173,18 @@ async function loadRace(raceId) {
 // ---------- MAIN ----------
 async function init () {
   await populateRaceSelector();
-  raceSelect.addEventListener('change', () => loadRace(raceSelect.value));
+  raceSelect.addEventListener("change", () => loadRace(raceSelect.value));
+  distInput.addEventListener("change", () => {
+    settings.distNm = Number(distInput.value);
+    saveSettings();
+    replotCurrent();
+  });
+  percentileInput.addEventListener("change", () => {
+    settings.percentile = Number(percentileInput.value);
+    clearCache();
+    saveSettings();
+    replotCurrent();
+  });
 }
 
 window.addEventListener('DOMContentLoaded', init);
@@ -191,6 +206,19 @@ async function populateRaceSelector() {
   }
 }
 
+function loadSettings() {
+  try {
+    const data = JSON.parse(localStorage.getItem("settings") || "{}");
+    return { ...DEFAULT_SETTINGS, ...data };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem("settings", JSON.stringify({ distNm: settings.distNm, percentile: settings.percentile, smoothLen: settings.smoothLen }));
+}
+
 /* ---------- helpers -------------------------------------------------- */
 
 async function fetchJSON (url) {
@@ -210,7 +238,7 @@ function plotBoat (boatId, boatName, filtered) {
   const track = positionsByBoat[boatId];
   if (!track) return;
 
-  const { sogKn, labels } = computeSeries(track, filtered);
+  const { sogKn, labels } = computeSeries(track, filtered, settings);
   const sectorInfo = computeSectorTimes(track);
   chartTitle.textContent = `${boatName} – Speed (${filtered ? 'filtered' : 'raw'})`;
 
@@ -287,7 +315,7 @@ function plotClass (classKey, filtered) {
   boatsArr.forEach((boatId, i) => {
     const track = positionsByBoat[boatId];
     if (!track) return;
-    const { sogKn, labels } = computeSeries(track, filtered);
+    const { sogKn, labels } = computeSeries(track, filtered, settings);
     const color = getColor(i, total);
 
     datasets.push({
@@ -364,74 +392,21 @@ function plotClass (classKey, filtered) {
     plugins:[sectorPlugin]
   });
 }
+function replotCurrent() {
+  if (boatSelect.value) {
+    const id = Number(boatSelect.value);
+    const name = boatNames[id] || boatSelect.selectedOptions[0].text;
+    plotBoat(id, name, !rawToggle.checked);
+    renderLeaderboard(null, id);
+  } else if (classSelect.value) {
+    plotClass(classSelect.value, !rawToggle.checked);
+    renderLeaderboard(classSelect.value);
+  }
+}
 
 /* ---------- maths ---------------------------------------------------- */
 
 
-function computeSeries (rawMoments, filtered = true) {
-  /* ---------- PASS 0 : chronological order ---------- */
-  const moms = rawMoments.slice().sort((a, b) => a.at - b.at);
-
-  /* ---------- PASS 1 : compute all speeds (no filter yet) ---------- */
-  const speeds   = [];        // track per-leg speed for dynamic ceiling
-  const legs     = [];        // we’ll reuse when filtering
-  // course bearing not needed without VMG
-
-  for (let i = 1; i < moms.length; i++) {
-    const A = moms[i - 1], B = moms[i];
-    const dtHr = (B.at - A.at) / 3600;
-    if (dtHr <= 0) continue;
-
-    const dist = haversineNm(A.lat, A.lon, B.lat, B.lon);
-    const sog  = dist / dtHr;
-
-    legs.push({ t:B.at, sog, dist });
-    speeds.push(sog);
-  }
-
-  /* ---------- dynamic ceiling from median speed ---------- */
-  const median = speeds.slice().sort((x, y) => x - y)[Math.floor(speeds.length / 2)] || 0;
-  const ceilKn = Math.min(25, 2.8 * median);
-
-  /* ---------- PASS 2 : build final arrays with chosen filter ---------- */
-  const sogArr = [], labels = [];
-
-  legs.forEach(({ t, sog, dist }) => {
-    const keep = !filtered
-      || (sog <= ceilKn && dist <= DIST_GLITCH_NM);
-
-    if (keep) {
-      sogArr.push(sog);
-      labels.push(new Date(t * 1000));
-    }
-  });
-
-  /* ---------- optional smoothing ---------- */
-  if (filtered && SMOOTH_LEN > 1) {
-    return {
-      sogKn : smooth(sogArr, SMOOTH_LEN),
-      labels
-    };
-  }
-  return { sogKn: sogArr, labels };
-}
-
-/* helper: centred moving-average (len must be odd) */
-function smooth (arr, len) {
-  if (len < 2) return arr;          // no smoothing
-  const half = Math.floor(len / 2);
-  const out = [];
-  for (let i = 0; i < arr.length; i++) {
-    let sum = 0, cnt = 0;
-    for (let k = -half; k <= half; k++) {
-      const j = i + k;
-      if (j < 0 || j >= arr.length) continue;
-      sum += arr[j]; cnt++;
-    }
-    out.push(+ (sum / cnt).toFixed(2));
-  }
-  return out;
-}
 const R_EARTH_NM = 3440.065;
 const deg2rad = d => d*Math.PI/180;
 const rad2deg = r => r*180/Math.PI;
