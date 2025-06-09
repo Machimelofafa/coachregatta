@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
-import { palette } from '../palette.mjs';
+import { palette } from '../src/palette';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import fs from 'fs';

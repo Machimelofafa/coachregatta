@@ -1,13 +1,18 @@
 {
   "type": "module",
   "scripts": {
-    "test": "node test/computeSeries.test.mjs && node test/parsePositions.test.mjs && node test/chart-contrast.test.mjs"
+    "test": "tsx test/computeSeries.test.ts && tsx test/parsePositions.test.ts && tsx test/chart-contrast.test.ts",
+    "dev": "vite",
+    "build": "vite build"
   },
   "devDependencies": {
     "chartjs-node-canvas": "^5.0.0",
     "chroma-js": "^3.1.2",
     "get-contrast": "^3.0.0",
     "pixelmatch": "^5.3.0",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
   }
 }

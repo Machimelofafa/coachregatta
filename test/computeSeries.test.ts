@@ -1,5 +1,5 @@
 import assert from "assert";
-import { computeSeries, clearCache } from "../speedUtils.mjs";
+import { computeSeries, clearCache } from "../src/speedUtils";
 
 function makeTrack() {
   const pts = [];
