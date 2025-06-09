@@ -75,13 +75,19 @@ export function initUI(opts:{
     }
     if(boatSelect.value){
       classSelect.selectedIndex = 0;
+      renderLeaderboard(null, getBoatId(boatSelect.value));
       selectionCb({ boat: boatSelect.value });
+    } else {
+      renderLeaderboard(null);
     }
   });
   classSelect.addEventListener('change', () => {
     if(classSelect.value){
       boatSelect.selectedIndex = 0;
+      renderLeaderboard(classSelect.value);
       selectionCb({ className: classSelect.value });
+    } else {
+      renderLeaderboard(null);
     }
   });
   sectorToggle.addEventListener('change', () => {
