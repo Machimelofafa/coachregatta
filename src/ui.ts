@@ -115,8 +115,8 @@ export function updateUiWithRace(setup: RaceSetup){
   classSelect.appendChild(classDefault);
 
   (setup.tags || [])
-    .filter(t => /^IRC /i.test(t.name) && !/Overall|Two Handed/i.test(t.name))
     .forEach(tag => {
+      if(!tag.name) return;
       const key = tag.name.toLowerCase().replace(/\s+/g,'').replace('zero','0');
       classInfo[key] = { name: tag.name, id: tag.id, boats: [] };
       const opt=document.createElement('option');
