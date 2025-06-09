@@ -34,6 +34,15 @@
     <input type="checkbox" id="rawToggle">
     Show raw points
   </label>
+<details id="settingsDrawer" style="margin-top:1rem;">
+  <summary>Settings</summary>
+  <label>Glitch distance (nm):
+    <input type="number" id="distInput" step="0.1" min="0">
+  </label><br>
+  <label>Speed ceiling percentile:
+    <input type="number" id="percentileInput" step="1" min="50" max="100">
+  </label>
+</details>
 
   <!-- Chart and leaderboard area -->
   <div id="main-content-container" style="display:flex; gap:2rem; align-items:flex-start; margin-top:2rem;">
