@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { parsePositions } from '../parsePositions.mjs';
+import { parsePositions } from '../src/parsePositions';
 
 const data = [
   { id: 1, moments:[

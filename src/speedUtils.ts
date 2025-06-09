@@ -4,7 +4,7 @@ export const DEFAULT_SETTINGS = {
   smoothLen: 3
 };
 
-import { haversineNm } from './parsePositions.mjs';
+import { haversineNm } from './parsePositions';
 
 let ceilCache = new WeakMap();
 
