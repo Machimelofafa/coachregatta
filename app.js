@@ -1,6 +1,7 @@
 /* global Chart */
 import { parsePositions } from "./parsePositions.mjs";
 import { computeSeries, DEFAULT_SETTINGS, clearCache } from "./speedUtils.mjs";
+import { getColor } from "./palette.mjs";
 
 // ---------- CONFIG ----------
 
@@ -227,12 +228,6 @@ async function fetchJSON (url) {
   return r.json();
 }
 
-// Generate a distinct colour for each dataset
-function getColor (idx, total) {
-  // Spread hues 0-360°, keep good saturation & lightness
-  const hue = (idx * 360 / total) % 360;
-  return `hsl(${hue}, 70%, 50%)`;
-}
 
 function plotBoat (boatId, boatName, filtered) {
   const track = positionsByBoat[boatId];
@@ -249,7 +244,7 @@ function plotBoat (boatId, boatName, filtered) {
     data : {
       labels,
       datasets : [
-        { label:'Speed (kn)', data:sogKn, borderWidth:1, tension:0.2 }
+        { label:'Speed (kn)', data:sogKn, borderWidth:2, tension:0.2 }
       ]
     },
     options : {
@@ -310,20 +305,19 @@ function plotClass (classKey, filtered) {
   if (!info) return;
   const datasets = [];
   const boatsArr = info.boats.slice();
-  const total = boatsArr.length;
 
   boatsArr.forEach((boatId, i) => {
     const track = positionsByBoat[boatId];
     if (!track) return;
     const { sogKn, labels } = computeSeries(track, filtered, settings);
-    const color = getColor(i, total);
+    const color = getColor(i);
 
     datasets.push({
       label : boatNames[boatId] || `Boat ${boatId}`,
       data  : labels.map((t, j) => ({ x: t, y: sogKn[j] })),
       borderColor      : color,
       backgroundColor  : color,
-      borderWidth      : 1,
+      borderWidth      : 2,
       pointRadius      : 0,
       pointHoverRadius : 4,
       spanGaps         : true,

@@ -1,0 +1,13 @@
+{
+  "type": "module",
+  "scripts": {
+    "test": "node test/computeSeries.test.mjs && node test/parsePositions.test.mjs && node test/chart-contrast.test.mjs"
+  },
+  "devDependencies": {
+    "chartjs-node-canvas": "^5.0.0",
+    "chroma-js": "^3.1.2",
+    "get-contrast": "^3.0.0",
+    "pixelmatch": "^5.3.0",
+    "pngjs": "^7.0.0"
+  }
+}
