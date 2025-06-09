@@ -1,4 +1,5 @@
 /* global Chart */
+import { parsePositions } from './parsePositions.mjs';
 
 // ---------- CONFIG ----------
 const DIST_GLITCH_NM = 2;     // >2 nm jump in one fix = bad GPS
@@ -113,7 +114,7 @@ async function loadRace(raceId) {
         /* 2.  positions file  ---------------------------------------------- */
         // AllPositions3.json is an ARRAY of { id, moments:[…] }
         const boats = await fetchJSON(POS_URL);
-        boats.forEach(b => { positionsByBoat[b.id] = b.moments; });
+        positionsByBoat = parsePositions(boats);
 
         /* 2b. leaderboard data -------------------------------------------- */
         const lbJSON = await fetchJSON(LEADER_URL);
