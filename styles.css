@@ -1,0 +1,43 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 1rem;
+  padding: 0;
+  line-height: 1.4;
+}
+
+label, select, input, button {
+  margin: 0.25rem 0.5rem 0.25rem 0;
+}
+
+select, input[type="number"], button {
+  padding: 0.4rem 0.6rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+button {
+  background-color: var(--palette-5);
+  color: #fff;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: var(--palette-6);
+}
+
+#error-container {
+  display: none;
+  border: 1px solid red;
+  color: red;
+  padding: 0.5rem;
+  margin: 1rem 0;
+}
+
+.lb-highlight {
+  background-color: #d2ebff;
+}
+
+.selected {
+  background-color: #ffef99;
+}
