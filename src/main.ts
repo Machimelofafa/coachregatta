@@ -27,6 +27,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 map.setView([0, 0], 2);
 let polylines: L.Polyline[] = [];
+let sectorPolygons: L.Polygon[] = [];
 
 let boatChoices: Choices | null = null;
 let classChoices: Choices | null = null;
@@ -48,6 +49,27 @@ function drawTracks(pos: Record<number, Moment[]>, ids: number[]) {
     const fg = L.featureGroup(group);
     map.fitBounds(fg.getBounds());
   }
+}
+
+function drawSectorPolygons(){
+  sectorPolygons.forEach(p => p.remove());
+  sectorPolygons = [];
+  if(!showSectors() || !courseNodes.length) return;
+  courseNodes.forEach((node, idx) => {
+    if(idx >= courseNodes.length - 1) return;
+    const next = courseNodes[idx+1];
+    const coords: [number, number][] = [
+      [node.lat, node.lon],
+      [next.lat, next.lon],
+      [node.lat, node.lon]
+    ];
+    const color = idx % 2 === 0 ? '#3388ff' : '#ff8800';
+    const poly = L.polygon(coords, { color, weight: 2, fillOpacity: 0.1 }).addTo(map);
+    const startName = node.name || (idx === 0 ? 'Start' : `WP${idx+1}`);
+    const endName = next.name || (idx+1 === courseNodes.length-1 ? 'Finish' : `WP${idx+2}`);
+    poly.bindTooltip(`${startName} – ${endName}`);
+    sectorPolygons.push(poly);
+  });
 }
 
 function refreshDropdowns(){
@@ -75,6 +97,7 @@ compareToggle.addEventListener('change', () => {
   }
   refreshDropdowns();
 });
+sectorToggle.addEventListener('change', drawSectorPolygons);
 
 async function handleSelectionChange(sel:{ boat?: string; className?: string }){
   if(!currentRace || !raceSetup) return;
@@ -117,6 +140,7 @@ async function loadRace(raceId:string){
   raceSetup = await fetchRaceSetup(raceId);
   courseNodes = raceSetup.course?.nodes || [];
   (window as any).courseNodes = courseNodes;
+  drawSectorPolygons();
   updateUiWithRace(raceSetup);
   refreshDropdowns();
   const ids = raceSetup.teams.map(t => t.id);
