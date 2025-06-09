@@ -12,17 +12,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.umd.min.js"></script>
 </head>
 <body>
-  <h1>De Guingand Bowl Race 2025 – Boat analysis</h1>
+  <h1 id="raceTitle">Coach Regatta</h1>
+
+  <label for="raceSelect">Choose a race:</label>
+  <select id="raceSelect">
+    <option value="">Loading…</option>
+  </select>
 
   <!-- Boat chooser -->
   <label for="boatSelect">Choose a boat:</label>
   <select id="boatSelect" disabled>
-    <option value="">Loading…</option>
+    <option value="">Select a race first</option>
   </select>
 
   <label for="classSelect" style="margin-left:2rem">Choose a class:</label>
   <select id="classSelect" disabled>
-    <option value="">Loading…</option>
+    <option value="">Select a race first</option>
   </select>
 
   <label style="margin-left:2rem">
