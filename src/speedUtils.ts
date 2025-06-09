@@ -72,3 +72,23 @@ function smooth(arr: number[], len: number): number[] {
   }
   return out;
 }
+
+export function calculateBoatStatistics(track: Moment[]): { maxSpeed: number; avgSpeed: number } {
+  const moms = (track || []).slice().sort((a, b) => a.at - b.at);
+  let maxSpeed = 0;
+  let sum = 0;
+  let count = 0;
+  for (let i = 1; i < moms.length; i++) {
+    const A = moms[i - 1];
+    const B = moms[i];
+    const dtHr = (B.at - A.at) / 3600;
+    if (dtHr <= 0) continue;
+    const dist = haversineNm(A.lat, A.lon, B.lat, B.lon);
+    const speed = dist / dtHr;
+    if (speed > maxSpeed) maxSpeed = speed;
+    sum += speed;
+    count++;
+  }
+  const avgSpeed = count ? sum / count : 0;
+  return { maxSpeed, avgSpeed };
+}

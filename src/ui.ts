@@ -211,3 +211,17 @@ export function formatDuration(sec:number){
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
+export function displaySectorAnalysis(stats: Record<number, { maxSpeed: number; avgSpeed: number }>){
+  const container=document.getElementById('sector-analysis-container');
+  if(!container) return;
+  const entries=Object.entries(stats);
+  if(!entries.length){ container.innerHTML=''; return; }
+  let html='<table><thead><tr><th>Boat</th><th>Top Speed (kn)</th><th>Avg Speed (kn)</th></tr></thead><tbody>';
+  entries.forEach(([id,s])=>{
+    const name=boatNames[Number(id)] || `Boat ${id}`;
+    html+=`<tr><td>${name}</td><td>${s.maxSpeed.toFixed(2)}</td><td>${s.avgSpeed.toFixed(2)}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  container.innerHTML=html;
+}
+

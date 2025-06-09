@@ -1,8 +1,8 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings } from './raceLoader';
 import { initChart, renderChart, Series } from './chart';
-import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors } from './ui';
-import { computeSeries } from './speedUtils';
-import type { RaceSetup } from './types';
+import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis } from './ui';
+import { computeSeries, calculateBoatStatistics } from './speedUtils';
+import type { RaceSetup, BoatStats } from './types';
 import Choices from 'choices.js';
 import 'choices.js/public/assets/styles/choices.min.css';
 
@@ -29,6 +29,7 @@ function refreshDropdowns(){
 
 let currentRace = '';
 let raceSetup: RaceSetup | null = null;
+let boatStats: Record<number, BoatStats> = {};
 
 initChart({ ctx, chartTitleEl: chartTitle });
 initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: {}, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle }, handleSelectionChange);
@@ -61,6 +62,14 @@ async function loadRace(raceId:string){
   raceSetup = await fetchRaceSetup(raceId);
   updateUiWithRace(raceSetup);
   refreshDropdowns();
+  const ids = raceSetup.teams.map(t => t.id);
+  const positions = await fetchPositions(raceId, ids);
+  boatStats = {};
+  ids.forEach(id => {
+    const track = positions[id];
+    if(track) boatStats[id] = calculateBoatStatistics(track);
+  });
+  displaySectorAnalysis(boatStats);
 }
 
 async function init(){
