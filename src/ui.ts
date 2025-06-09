@@ -11,6 +11,7 @@ let chartTitle: HTMLElement;
 let boatSelect: HTMLSelectElement;
 let classSelect: HTMLSelectElement;
 let rawToggle: HTMLInputElement;
+let sectorToggle: HTMLInputElement;
 let selectionCb: (sel:{boat?:string; className?:string})=>void = ()=>{};
 let nameToId: Record<string, number> = {};
 
@@ -42,6 +43,7 @@ export function initUI(opts:{
   boatSelectEl: HTMLSelectElement;
   classSelectEl: HTMLSelectElement;
   rawToggleEl: HTMLInputElement;
+  sectorToggleEl: HTMLInputElement;
 }, onSelect:(sel:{boat?:string; className?:string})=>void){
   leaderboardData = opts.leaderboardDataRef;
   classInfo = opts.classInfoRef;
@@ -52,6 +54,7 @@ export function initUI(opts:{
   boatSelect = opts.boatSelectEl;
   classSelect = opts.classSelectEl;
   rawToggle = opts.rawToggleEl;
+  sectorToggle = opts.sectorToggleEl;
   selectionCb = onSelect;
   boatSelect.addEventListener('change', () => {
     if(boatSelect.value){
@@ -62,6 +65,13 @@ export function initUI(opts:{
   classSelect.addEventListener('change', () => {
     if(classSelect.value){
       boatSelect.selectedIndex = 0;
+      selectionCb({ className: classSelect.value });
+    }
+  });
+  sectorToggle.addEventListener('change', () => {
+    if(boatSelect.value){
+      selectionCb({ boat: boatSelect.value });
+    } else if(classSelect.value){
       selectionCb({ className: classSelect.value });
     }
   });
@@ -120,6 +130,7 @@ export function updateUiWithRace(setup: RaceSetup){
 export function getBoatId(name:string){ return nameToId[name]; }
 export function getClassInfo(){ return classInfo; }
 export function getBoatNames(){ return boatNames; }
+export function showSectors(){ return sectorToggle && sectorToggle.checked; }
 
 export function renderLeaderboard(classKey:string|null=null, boatId:number|null=null){
   const container = document.getElementById('leaderboard-container');
