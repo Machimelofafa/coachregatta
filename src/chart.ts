@@ -2,6 +2,12 @@
 import { computeSeries, DEFAULT_SETTINGS } from './speedUtils';
 import { getColor } from './palette';
 import type { Moment, CourseNode } from './types';
+import chroma from 'chroma-js';
+import Chart from 'chart.js/auto';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import 'chartjs-adapter-date-fns';
+
+Chart.register(zoomPlugin);
 
 // Global state provided by main.ts
 let courseNodes: CourseNode[] = [];
@@ -33,7 +39,7 @@ export function initChart(opts: {
 export function destroyChart() {
   if (!chart) return;
   chart.destroy();
-  (window as any).Chart.unregister(sectorPlugin);
+  Chart.unregister(sectorPlugin);
   chart = null;
 }
 
@@ -44,11 +50,11 @@ export function plotBoat(boatId: number, boatName: string, filtered: boolean, se
   const sectorInfo = computeSectorTimes(track);
   chartTitle.textContent = `${boatName} – Speed (${filtered ? 'filtered' : 'raw'})`;
   destroyChart();
-  chart = new (window as any).Chart(ctx, {
+  chart = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
-      datasets: [{ label: 'Speed (kn)', data: sogKn, borderWidth: 2, tension: 0.2 }]
+      datasets: [{ label: 'Speed (kn)', data: sogKn, borderWidth: 2, tension: 0.2 }] as any
     },
     options: {
       responsive: true,
@@ -80,7 +86,7 @@ export function plotBoat(boatId: number, boatName: string, filtered: boolean, se
         },
         sectors: sectorInfo
       }
-    },
+    } as any,
     plugins: [sectorPlugin]
   });
 }
@@ -110,9 +116,9 @@ export function plotClass(classKey: string, filtered: boolean, settings: Partial
   const sectorInfo = info.boats.length ? computeSectorTimes(positionsByBoat[info.boats[0]]) : { times:[], labels:[], mids:[] };
   chartTitle.textContent = `${info.name} – Speed (${filtered ? 'filtered' : 'raw'})`;
   destroyChart();
-  chart = new (window as any).Chart(ctx, {
+  chart = new Chart(ctx, {
     type: 'line',
-    data: { datasets },
+    data: { datasets } as any,
     options: {
       responsive: true,
       scales: {
@@ -143,7 +149,7 @@ export function plotClass(classKey: string, filtered: boolean, settings: Partial
         },
         sectors: sectorInfo
       }
-    },
+    } as any,
     plugins:[sectorPlugin]
   });
 }
