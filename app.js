@@ -18,6 +18,7 @@ let chart;                      // Chart.js instance
 let courseNodes = [];           // course waypoints for sector boundaries
 let classInfo = {};             // { key:{ name, boats:[ids] } }
 let boatNames = {};             // id -> name
+let leaderboardData = [];       // [{ id, rank, status, cElapsedFormatted, ... }]
 
 async function loadRace(raceId) {
     if (!raceId) {
@@ -29,6 +30,8 @@ async function loadRace(raceId) {
       classSelect.disabled = true;
       if(chart) chart.destroy();
       chartTitle.textContent = '';
+      document.getElementById('leaderboard-container').innerHTML = '';
+      clearSectorTable();
       return;
     }
 
@@ -40,13 +43,17 @@ async function loadRace(raceId) {
     classSelect.disabled = true;
     if(chart) chart.destroy();
     chartTitle.textContent = '';
+    document.getElementById('leaderboard-container').textContent = '';
+    clearSectorTable();
 
     const SETUP_URL = `public/${raceId}/RaceSetup.json`;
     const POS_URL   = `public/${raceId}/AllPositions3.json`;
+    const LEADER_URL = `public/${raceId}/leaderboard.json`;
 
     try {
         boatSelect.value = '';
         classSelect.value = '';
+        leaderboardData = [];
 
         /* 1.  metadata  ----------------------------------------------------- */
         const setup = await fetchJSON(SETUP_URL);
@@ -108,6 +115,15 @@ async function loadRace(raceId) {
         const boats = await fetchJSON(POS_URL);
         boats.forEach(b => { positionsByBoat[b.id] = b.moments; });
 
+        /* 2b. leaderboard data -------------------------------------------- */
+        const lbJSON = await fetchJSON(LEADER_URL);
+        leaderboardData = (lbJSON.tags?.[0]?.teams || []).map(t => ({
+          id: t.id,
+          rank: t.rankR ?? t.rankS,
+          status: t.status,
+          corrected: t.cElapsedFormatted
+        }));
+
         /* 3.  user interaction --------------------------------------------- */
         boatSelect.onchange = () => {
           classSelect.value = '';
@@ -122,15 +138,25 @@ async function loadRace(raceId) {
           else if (classSelect.value) drawClass();
         };
 
+        renderLeaderboard();
+
         function drawBoat () {
           const id   = Number(boatSelect.value);
           const name = boatNames[id] || boatSelect.selectedOptions[0].text;
-          if (id) plotBoat(id, name, !rawToggle.checked);   // true = filtered
+          if (id) {
+            plotBoat(id, name, !rawToggle.checked);   // true = filtered
+            renderLeaderboard(null, id);
+            calculateSectorStats(id).then(renderSectorTable);
+          }
         }
 
         function drawClass () {
           const classKey = classSelect.value;
-          if (classKey && classInfo[classKey]) plotClass(classKey, !rawToggle.checked);
+          if (classKey && classInfo[classKey]) {
+            plotClass(classKey, !rawToggle.checked);
+            renderLeaderboard(classKey);
+            clearSectorTable();
+          }
         }
 
     } catch (err) {
@@ -489,4 +515,87 @@ const sectorPlugin = {
     ctx.restore();
   }
 };
+
+function renderLeaderboard (classKey = null, boatId = null) {
+  const container = document.getElementById('leaderboard-container');
+  if (!container) return;
+  if (!leaderboardData.length) {
+    container.textContent = 'No leaderboard data';
+    return;
+  }
+
+  let data = leaderboardData.slice();
+  if (classKey && classInfo[classKey]) {
+    const ids = new Set(classInfo[classKey].boats);
+    data = data.filter(d => ids.has(d.id));
+  }
+  data.sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity));
+
+  let html = '<table><thead><tr><th>Rank</th><th>Boat</th><th>Status</th><th>Corrected</th></tr></thead><tbody>';
+  data.forEach(d => {
+    const name = boatNames[d.id] || `Boat ${d.id}`;
+    const highlight = d.id === boatId ? ' style="background-color:#ffef99"' : '';
+    html += `<tr${highlight}><td>${d.rank ?? ''}</td><td>${name}</td><td>${d.status}</td><td>${d.corrected || ''}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function clearSectorTable () {
+  const c = document.getElementById('sector-analysis-container');
+  if (c) c.innerHTML = '';
+}
+
+async function calculateSectorStats (boatId) {
+  const track = positionsByBoat[boatId];
+  if (!track || !courseNodes.length) return [];
+  const moms = track.slice().sort((a,b) => a.at - b.at);
+
+  const stats = [];
+  for (let i = 0; i < courseNodes.length - 1; i++) {
+    const start = courseNodes[i];
+    const end   = courseNodes[i+1];
+    let startIdx = null, endIdx = null, startDist=Infinity, endDist=Infinity;
+    moms.forEach((m, idx) => {
+      const ds = haversineNm(start.lat, start.lon, m.lat, m.lon);
+      if (ds < startDist) { startDist = ds; startIdx = idx; }
+      const de = haversineNm(end.lat, end.lon, m.lat, m.lon);
+      if (de < endDist) { endDist = de; endIdx = idx; }
+    });
+    if (startIdx === null || endIdx === null || endIdx <= startIdx) continue;
+
+    const startTime = moms[startIdx].at;
+    const endTime = moms[endIdx].at;
+    const timeTaken = endTime - startTime;
+    let dist = 0;
+    for (let j = startIdx + 1; j <= endIdx; j++) {
+      const A = moms[j-1], B = moms[j];
+      dist += haversineNm(A.lat, A.lon, B.lat, B.lon);
+    }
+    const avgSpeed = timeTaken > 0 ? dist / (timeTaken / 3600) : 0;
+    stats.push({ timeTaken, distance: dist, avgSpeed });
+  }
+  return stats;
+}
+
+function renderSectorTable (stats = []) {
+  const container = document.getElementById('sector-analysis-container');
+  if (!container) return;
+  if (!stats.length) { container.innerHTML = ''; return; }
+
+  let html = '<table><thead><tr><th>Sector</th><th>Time</th><th>Distance (nm)</th><th>Avg Speed (kn)</th></tr></thead><tbody>';
+  stats.forEach((s, i) => {
+    html += `<tr><td>${i+1}</td><td>${formatDuration(s.timeTaken)}</td><td>${s.distance.toFixed(2)}</td><td>${s.avgSpeed.toFixed(2)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function formatDuration (sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.round(sec % 60);
+  const pad = n => n.toString().padStart(2, '0');
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
 
