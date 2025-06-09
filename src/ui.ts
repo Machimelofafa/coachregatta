@@ -1,5 +1,5 @@
 
-import type { LeaderboardEntry, Moment, CourseNode, SectorStat } from './types';
+import type { LeaderboardEntry, Moment, CourseNode, SectorStat, RaceSetup } from './types';
 
 let leaderboardData: LeaderboardEntry[] = [];
 let classInfo: Record<string, { name: string; id: number; boats: number[] }> = {};
@@ -10,6 +10,8 @@ let chartTitle: HTMLElement;
 let boatSelect: HTMLSelectElement;
 let classSelect: HTMLSelectElement;
 let rawToggle: HTMLInputElement;
+let selectionCb: (sel:{boat?:string; className?:string})=>void = ()=>{};
+let nameToId: Record<string, number> = {};
 
 export function initUI(opts:{
   leaderboardDataRef: LeaderboardEntry[];
@@ -21,7 +23,7 @@ export function initUI(opts:{
   boatSelectEl: HTMLSelectElement;
   classSelectEl: HTMLSelectElement;
   rawToggleEl: HTMLInputElement;
-}){
+}, onSelect:(sel:{boat?:string; className?:string})=>void){
   leaderboardData = opts.leaderboardDataRef;
   classInfo = opts.classInfoRef;
   boatNames = opts.boatNamesRef;
@@ -31,7 +33,73 @@ export function initUI(opts:{
   boatSelect = opts.boatSelectEl;
   classSelect = opts.classSelectEl;
   rawToggle = opts.rawToggleEl;
+  selectionCb = onSelect;
+  boatSelect.addEventListener('change', () => {
+    if(boatSelect.value){
+      classSelect.selectedIndex = 0;
+      selectionCb({ boat: boatSelect.value });
+    }
+  });
+  classSelect.addEventListener('change', () => {
+    if(classSelect.value){
+      boatSelect.selectedIndex = 0;
+      selectionCb({ className: classSelect.value });
+    }
+  });
 }
+
+export function updateUiWithRace(setup: RaceSetup){
+  nameToId = {};
+  classInfo = {};
+  boatNames = {};
+
+  boatSelect.innerHTML = '';
+  classSelect.innerHTML = '';
+  const boatDefault = document.createElement('option');
+  boatDefault.disabled = true;
+  boatDefault.selected = true;
+  boatDefault.value = '';
+  boatDefault.textContent = 'Select Boat';
+  boatSelect.appendChild(boatDefault);
+
+  const classDefault = document.createElement('option');
+  classDefault.disabled = true;
+  classDefault.selected = true;
+  classDefault.value = '';
+  classDefault.textContent = 'Select Class';
+  classSelect.appendChild(classDefault);
+
+  (setup.tags || [])
+    .filter(t => /^IRC /i.test(t.name) && !/Overall|Two Handed/i.test(t.name))
+    .forEach(tag => {
+      const key = tag.name.toLowerCase().replace(/\s+/g,'').replace('zero','0');
+      classInfo[key] = { name: tag.name, id: tag.id, boats: [] };
+      const opt=document.createElement('option');
+      opt.value = key;
+      opt.textContent = tag.name;
+      classSelect.appendChild(opt);
+    });
+
+  setup.teams.sort((a,b)=>a.name.localeCompare(b.name)).forEach(team => {
+    const opt=document.createElement('option');
+    opt.value = team.name;
+    opt.textContent = team.name;
+    boatSelect.appendChild(opt);
+    nameToId[team.name]=team.id;
+    boatNames[team.id]=team.name;
+    const tags=team.tags||[];
+    Object.keys(classInfo).forEach(k=>{
+      if(tags.includes(classInfo[k].id)) classInfo[k].boats.push(team.id);
+    });
+  });
+
+  boatSelect.selectedIndex = 0;
+  classSelect.selectedIndex = 0;
+}
+
+export function getBoatId(name:string){ return nameToId[name]; }
+export function getClassInfo(){ return classInfo; }
+export function getBoatNames(){ return boatNames; }
 
 export function renderLeaderboard(classKey:string|null=null, boatId:number|null=null){
   const container = document.getElementById('leaderboard-container');
@@ -117,16 +185,3 @@ export function formatDuration(sec:number){
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
-export function replotCurrent(){
-  if(boatSelect.value){
-    const id = parseInt(boatSelect.value, 10);
-    const name = boatNames[id] || boatSelect.selectedOptions[0].text;
-    if(!isNaN(id)){
-      (window as any).plotBoat(id,name,!rawToggle.checked);
-      renderLeaderboard(null,id);
-    }
-  }else if(classSelect.value){
-    (window as any).plotClass(classSelect.value,!rawToggle.checked);
-    renderLeaderboard(classSelect.value);
-  }
-}
