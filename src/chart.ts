@@ -1,7 +1,8 @@
 // Chart rendering and helpers
 import { computeSeries, DEFAULT_SETTINGS } from './speedUtils';
 import { getColor } from './palette';
-import type { Moment } from './types';
+import type { Moment, CourseNode } from './types';
+import { haversineNm } from './parsePositions';
 import Chart from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
@@ -45,8 +46,9 @@ export function destroyChart() {
 }
 
 export interface Series { name: string; data: { x: Date; y: number }[] }
+export interface SectorInfo { times: number[]; labels: string[]; mids: number[] }
 
-export function renderChart(series: Series[], selectedNames: string[] = []) {
+export function renderChart(series: Series[], selectedNames: string[] = [], sectorInfo?: SectorInfo) {
   destroyChart();
   if(selectedNames.length){
     const set = new Set(selectedNames);
@@ -91,10 +93,70 @@ export function renderChart(series: Series[], selectedNames: string[] = []) {
           zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' },
           pan:{ enabled:true, mode:'x' },
           limits:{ x:{ min:'original', max:'original' } }
-        }
+        },
+        sectors: sectorInfo
       }
-    } as any
+    } as any,
+    plugins: sectorInfo ? [sectorPlugin] : []
   });
   chart.canvas.addEventListener('mouseleave', ()=>{ highlightRow(null); lastHovered=null; });
 }
+
+export function computeSectorTimes(moments: Moment[], nodes: CourseNode[]): SectorInfo {
+  if (!nodes.length) return { times: [], labels: [], mids: [] };
+  const moms = moments.slice().sort((a,b)=>a.at-b.at);
+  const times:number[] = [], labels:string[] = [], mids:number[] = [];
+  let prevTime = moms[0]?.at || 0;
+  let prevName = nodes[0].name || 'Start';
+  for(let i=1;i<nodes.length;i++){
+    const node = nodes[i];
+    let bestDist = Infinity;
+    let at: number | null = null;
+    moms.forEach(m => {
+      const d = haversineNm(node.lat, node.lon, m.lat, m.lon);
+      if(d < bestDist){ bestDist = d; at = m.at; }
+    });
+    if(at!==null){
+      times.push(at);
+      mids.push((prevTime + at)/2);
+      const currName = node.name || (i===nodes.length-1 ? 'Finish' : `WP${i+1}`);
+      labels.push(`${prevName} – ${currName}`);
+      prevTime = at;
+      prevName = currName;
+    }
+  }
+  return { times, labels, mids };
+}
+
+const sectorPlugin = {
+  id: 'sectors',
+  afterDraw(chart:any, _args:any, opts:any){
+    const times = opts?.times || [];
+    const labels = opts?.labels || [];
+    const mids = opts?.mids || [];
+    if(!times.length) return;
+    const { ctx, scales:{x,y} } = chart;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.setLineDash([4,4]);
+    times.forEach((t:number)=>{
+      const px = x.getPixelForValue(new Date(t*1000));
+      ctx.beginPath();
+      ctx.moveTo(px, y.top);
+      ctx.lineTo(px, y.bottom);
+      ctx.stroke();
+    });
+    ctx.restore();
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    mids.forEach((t:number,i:number)=>{
+      const px = x.getPixelForValue(new Date(t*1000));
+      ctx.fillText(labels[i]||'', px, y.top+4);
+    });
+    ctx.restore();
+  }
+};
 

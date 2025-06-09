@@ -1,9 +1,9 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings } from './raceLoader';
-import { initChart, renderChart, Series } from './chart';
-import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis } from './ui';
+import { initChart, renderChart, Series, computeSectorTimes } from './chart';
+import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis, showSectors } from './ui';
 import { computeSeries, calculateBoatStatistics } from './speedUtils';
 import { getColor } from './palette';
-import type { RaceSetup, BoatStats, Moment } from './types';
+import type { RaceSetup, BoatStats, Moment, CourseNode } from './types';
 import Choices from 'choices.js';
 import 'choices.js/public/assets/styles/choices.min.css';
 import L from 'leaflet';
@@ -16,6 +16,7 @@ const chartTitle  = document.getElementById('chartTitle') as HTMLElement;
 const ctx         = (document.getElementById('speedChart') as HTMLCanvasElement).getContext('2d')!;
 const rawToggle   = document.getElementById('rawToggle') as HTMLInputElement;
 const compareToggle = document.getElementById('compareToggle') as HTMLInputElement;
+const sectorToggle = document.getElementById('sectorToggle') as HTMLInputElement;
 const distInput   = document.getElementById('distInput') as HTMLInputElement;
 const percentileInput = document.getElementById('percentileInput') as HTMLInputElement;
 const boatStatus  = document.getElementById('boatStatus') as HTMLElement;
@@ -59,9 +60,10 @@ function refreshDropdowns(){
 let currentRace = '';
 let raceSetup: RaceSetup | null = null;
 let boatStats: Record<number, BoatStats> = {};
+let courseNodes: CourseNode[] = [];
 
 initChart({ ctx, chartTitleEl: chartTitle });
-initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: {}, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle }, handleSelectionChange);
+initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: {}, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle, sectorToggleEl: sectorToggle }, handleSelectionChange);
 disableSelectors();
 compareToggle.addEventListener('change', () => {
   comparisonMode = compareToggle.checked;
@@ -101,7 +103,11 @@ async function handleSelectionChange(sel:{ boat?: string; className?: string }){
     const { sogKn, labels } = computeSeries(track, !rawToggle.checked, settings);
     return { name: getBoatNames()[id] || String(id), data: labels.map((t,j)=>({ x:t, y:sogKn[j] })) };
   }).filter(Boolean);
-  renderChart(series, selectedNames);
+  let sectorInfo = { times: [] as number[], labels: [] as string[], mids: [] as number[] };
+  if(courseNodes.length && positions[ids[0]]){
+    sectorInfo = computeSectorTimes(positions[ids[0]], courseNodes);
+  }
+  renderChart(series, selectedNames, showSectors() ? sectorInfo : undefined);
   drawTracks(positions, ids);
 }
 
@@ -109,6 +115,8 @@ async function loadRace(raceId:string){
   if(!raceId) return;
   currentRace = raceId;
   raceSetup = await fetchRaceSetup(raceId);
+  courseNodes = raceSetup.course?.nodes || [];
+  (window as any).courseNodes = courseNodes;
   updateUiWithRace(raceSetup);
   refreshDropdowns();
   const ids = raceSetup.teams.map(t => t.id);
