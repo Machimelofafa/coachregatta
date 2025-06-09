@@ -12,6 +12,7 @@ const raceSelect  = document.getElementById('raceSelect') as HTMLSelectElement;
 const chartTitle  = document.getElementById('chartTitle') as HTMLElement;
 const ctx         = (document.getElementById('speedChart') as HTMLCanvasElement).getContext('2d')!;
 const rawToggle   = document.getElementById('rawToggle') as HTMLInputElement;
+const compareToggle = document.getElementById('compareToggle') as HTMLInputElement;
 const distInput   = document.getElementById('distInput') as HTMLInputElement;
 const percentileInput = document.getElementById('percentileInput') as HTMLInputElement;
 const boatStatus  = document.getElementById('boatStatus') as HTMLElement;
@@ -19,6 +20,7 @@ const classStatus = document.getElementById('classStatus') as HTMLElement;
 
 let boatChoices: Choices | null = null;
 let classChoices: Choices | null = null;
+let comparisonMode = false;
 
 function refreshDropdowns(){
   if(boatChoices) boatChoices.destroy();
@@ -34,16 +36,35 @@ let boatStats: Record<number, BoatStats> = {};
 initChart({ ctx, chartTitleEl: chartTitle });
 initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: {}, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle }, handleSelectionChange);
 disableSelectors();
+compareToggle.addEventListener('change', () => {
+  comparisonMode = compareToggle.checked;
+  if(comparisonMode){
+    boatSelect.setAttribute('multiple', '');
+  } else {
+    boatSelect.removeAttribute('multiple');
+    boatSelect.selectedIndex = 0;
+  }
+  refreshDropdowns();
+});
 
 async function handleSelectionChange(sel:{ boat?: string; className?: string }){
   if(!currentRace || !raceSetup) return;
   let ids: number[] = [];
+  let selectedNames: string[] = [];
   if(sel.boat){
-    const id = getBoatId(sel.boat);
-    if(id) ids = [id];
+    if(comparisonMode){
+      selectedNames = Array.from(boatSelect.selectedOptions).map(o=>o.value).filter(Boolean);
+      ids = selectedNames.map(n => getBoatId(n)).filter((n):n is number => !!n);
+    } else {
+      const id = getBoatId(sel.boat);
+      if(id){ ids = [id]; selectedNames = [sel.boat]; }
+    }
   }else if(sel.className){
     const info = getClassInfo()[sel.className];
-    if(info) ids = info.boats.slice();
+    if(info){
+      ids = info.boats.slice();
+      selectedNames = ids.map(id => getBoatNames()[id] || String(id));
+    }
   }
   if(!ids.length) return;
   const positions = await fetchPositions(currentRace, ids);
@@ -53,7 +74,7 @@ async function handleSelectionChange(sel:{ boat?: string; className?: string }){
     const { sogKn, labels } = computeSeries(track, !rawToggle.checked, settings);
     return { name: getBoatNames()[id] || String(id), data: labels.map((t,j)=>({ x:t, y:sogKn[j] })) };
   }).filter(Boolean);
-  renderChart(series);
+  renderChart(series, selectedNames);
 }
 
 async function loadRace(raceId:string){
