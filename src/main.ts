@@ -3,6 +3,8 @@ import { initChart, renderChart, Series } from './chart';
 import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors } from './ui';
 import { computeSeries } from './speedUtils';
 import type { RaceSetup } from './types';
+import Choices from 'choices.js';
+import 'choices.js/public/assets/styles/choices.min.css';
 
 const boatSelect  = document.getElementById('boatSelect') as HTMLSelectElement;
 const classSelect = document.getElementById('classSelect') as HTMLSelectElement;
@@ -14,6 +16,16 @@ const distInput   = document.getElementById('distInput') as HTMLInputElement;
 const percentileInput = document.getElementById('percentileInput') as HTMLInputElement;
 const boatStatus  = document.getElementById('boatStatus') as HTMLElement;
 const classStatus = document.getElementById('classStatus') as HTMLElement;
+
+let boatChoices: Choices | null = null;
+let classChoices: Choices | null = null;
+
+function refreshDropdowns(){
+  if(boatChoices) boatChoices.destroy();
+  if(classChoices) classChoices.destroy();
+  boatChoices = new Choices(boatSelect, { searchEnabled: true, shouldSort: false });
+  classChoices = new Choices(classSelect, { searchEnabled: true, shouldSort: false });
+}
 
 let currentRace = '';
 let raceSetup: RaceSetup | null = null;
@@ -48,11 +60,13 @@ async function loadRace(raceId:string){
   currentRace = raceId;
   raceSetup = await fetchRaceSetup(raceId);
   updateUiWithRace(raceSetup);
+  refreshDropdowns();
 }
 
 async function init(){
   const races = await populateRaceSelector();
   if(!races.length) return;
+  refreshDropdowns();
   raceSelect.value = races[0].id;
   await loadRace(races[0].id);
   raceSelect.addEventListener('change', async () => {
