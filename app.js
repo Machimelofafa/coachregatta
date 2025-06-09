@@ -1,15 +1,14 @@
 /* global Chart */
 
 // ---------- CONFIG ----------
-const RACE = 'dgbr2025';
-const SETUP_URL = `public/${RACE}/RaceSetup.json`;
-const POS_URL   = `public/${RACE}/AllPositions3.json`;
 const DIST_GLITCH_NM = 2;     // >2 nm jump in one fix = bad GPS
 const SMOOTH_LEN     = 3;     // moving-average window (set 1 = off)
 
 // ---------- DOM refs ----------
 const boatSelect  = document.getElementById('boatSelect');
 const classSelect = document.getElementById('classSelect');
+const raceSelect  = document.getElementById('raceSelect');
+const raceTitle   = document.getElementById('raceTitle');
 const chartTitle  = document.getElementById('chartTitle');
 const ctx         = document.getElementById('speedChart').getContext('2d');
 const rawToggle   = document.getElementById('rawToggle');
@@ -20,95 +19,130 @@ let courseNodes = [];           // course waypoints for sector boundaries
 let classInfo = {};             // { key:{ name, boats:[ids] } }
 let boatNames = {};             // id -> name
 
+const availableRaces = {
+  'dgbr2025': 'De Guingand Bowl Race 2025',
+  'cervantes2025': 'Cervantes Trophy Race 2025'
+};
+
+function populateRaceSelector() {
+    raceSelect.innerHTML = '<option value="">Select a race</option>';
+    for (const raceId in availableRaces) {
+        const option = document.createElement('option');
+        option.value = raceId;
+        option.textContent = availableRaces[raceId];
+        raceSelect.appendChild(option);
+    }
+    raceSelect.firstElementChild.textContent = 'Select a race';
+}
+
+async function loadRace(race) {
+    if (!race) return;
+    raceTitle.textContent = availableRaces[race];
+    boatSelect.innerHTML = '<option value="">Loading...</option>';
+    classSelect.innerHTML = '<option value="">Loading...</option>';
+    boatSelect.disabled = true;
+    classSelect.disabled = true;
+    if(chart) chart.destroy();
+    chartTitle.textContent = '';
+
+    const SETUP_URL = `public/${race}/RaceSetup.json`;
+    const POS_URL   = `public/${race}/AllPositions3.json`;
+
+    try {
+        boatSelect.value = '';
+        classSelect.value = '';
+
+        /* 1.  metadata  ----------------------------------------------------- */
+        const setup = await fetchJSON(SETUP_URL);
+
+        courseNodes = setup.course?.nodes || [];
+
+        boatSelect.innerHTML = '';
+        classSelect.innerHTML = '';
+
+        // ----- build class list from tags -----
+        (setup.tags || [])
+          .filter(t => /^IRC /i.test(t.name) && !/Overall|Two Handed/i.test(t.name))
+          .forEach(tag => {
+            const key = tag.name
+              .toLowerCase()
+              .replace(/\s+/g, '')
+              .replace('zero', '0');
+            classInfo[key] = { name: tag.name, id: tag.id, boats: [] };
+
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = tag.name;
+            classSelect.appendChild(opt);
+          });
+
+        if (Object.keys(classInfo).length) {
+          classSelect.disabled = false;
+          classSelect.insertAdjacentHTML('afterbegin', '<option value="">Select a class</option>');
+        } else {
+          classSelect.insertAdjacentHTML('afterbegin', '<option value="">No classes available</option>');
+        }
+
+        // RaceSetup.json holds boats inside `teams`
+        setup.teams
+             .sort((a, b) => a.name.localeCompare(b.name))
+             .forEach(team => {
+               const o   = document.createElement('option');
+               o.value   = team.id;          // numeric ID
+               o.textContent = team.name;    // friendly name
+               boatSelect.appendChild(o);
+
+               boatNames[team.id] = team.name;
+               const tags = team.tags || [];
+               Object.keys(classInfo).forEach(k => {
+                 const cid = classInfo[k].id;
+                 if (tags.includes(cid)) classInfo[k].boats.push(team.id);
+               });
+             });
+
+        boatSelect.disabled = false;
+        boatSelect.insertAdjacentHTML('afterbegin', '<option value="">Select a boat</option>');
+
+        /* 2.  positions file  ---------------------------------------------- */
+        // AllPositions3.json is an ARRAY of { id, moments:[…] }
+        const boats = await fetchJSON(POS_URL);
+        boats.forEach(b => { positionsByBoat[b.id] = b.moments; });
+
+        /* 3.  user interaction --------------------------------------------- */
+        boatSelect.onchange = () => {
+          classSelect.value = '';
+          drawBoat();
+        };
+        classSelect.onchange = () => {
+          boatSelect.value = '';
+          drawClass();
+        };
+        rawToggle.onchange = () => {
+          if (boatSelect.value) drawBoat();
+          else if (classSelect.value) drawClass();
+        };
+
+        function drawBoat () {
+          const id   = Number(boatSelect.value);
+          const name = boatNames[id] || boatSelect.selectedOptions[0].text;
+          if (id) plotBoat(id, name, !rawToggle.checked);   // true = filtered
+        }
+
+        function drawClass () {
+          const classKey = classSelect.value;
+          if (classKey && classInfo[classKey]) plotClass(classKey, !rawToggle.checked);
+        }
+
+    } catch (err) {
+        alert('Error initialising page – see console.');
+        console.error(err);
+    }
+}
+
 // ---------- MAIN ----------
 async function init () {
-  try {
-    boatSelect.value = '';
-    classSelect.value = '';
-    /* 1.  metadata  ----------------------------------------------------- */
-    const setup = await fetchJSON(SETUP_URL);
-
-    courseNodes = setup.course?.nodes || [];
-
-    // ----- build class list from tags -----
-    (setup.tags || [])
-      .filter(t => /^IRC /i.test(t.name) && !/Overall|Two Handed/i.test(t.name))
-      .forEach(tag => {
-        const key = tag.name
-          .toLowerCase()
-          .replace(/\s+/g, '')
-          .replace('zero', '0');
-        classInfo[key] = { name: tag.name, id: tag.id, boats: [] };
-
-        const opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = tag.name;
-        classSelect.appendChild(opt);
-      });
-
-    if (Object.keys(classInfo).length) {
-      classSelect.disabled = false;
-      classSelect.firstElementChild.textContent = 'Select a class';
-    } else {
-      classSelect.firstElementChild.textContent = 'No classes available';
-    }
-    classSelect.disabled = false;
-    classSelect.firstElementChild.textContent = 'Select a class';
-
-    // RaceSetup.json holds boats inside `teams`
-    setup.teams
-         .sort((a, b) => a.name.localeCompare(b.name))
-         .forEach(team => {
-           const o   = document.createElement('option');
-           o.value   = team.id;          // numeric ID
-           o.textContent = team.name;    // friendly name
-           boatSelect.appendChild(o);
-
-           boatNames[team.id] = team.name;
-           const tags = team.tags || [];
-           Object.keys(classInfo).forEach(k => {
-             const cid = classInfo[k].id;
-             if (tags.includes(cid)) classInfo[k].boats.push(team.id);
-           });
-         });
-
-    boatSelect.disabled = false;
-    boatSelect.firstElementChild.textContent = 'Select a boat';
-
-    /* 2.  positions file  ---------------------------------------------- */
-    // AllPositions3.json is an ARRAY of { id, moments:[…] }
-    const boats = await fetchJSON(POS_URL);
-    boats.forEach(b => { positionsByBoat[b.id] = b.moments; });
-
-    /* 3.  user interaction --------------------------------------------- */
-    boatSelect.addEventListener('change', () => {
-      classSelect.value = '';
-      drawBoat();
-    });
-    classSelect.addEventListener('change', () => {
-      boatSelect.value = '';
-      drawClass();
-    });
-    rawToggle.addEventListener('change', () => {
-      if (boatSelect.value) drawBoat();
-      else if (classSelect.value) drawClass();
-    });
-
-    function drawBoat () {
-      const id   = Number(boatSelect.value);
-      const name = boatNames[id] || boatSelect.selectedOptions[0].text;
-      if (id) plotBoat(id, name, !rawToggle.checked);   // true = filtered
-    }
-
-    function drawClass () {
-      const classKey = classSelect.value;
-      if (classKey && classInfo[classKey]) plotClass(classKey, !rawToggle.checked);
-    }
-
-  } catch (err) {
-    alert('Error initialising page – see console.');
-    console.error(err);
-  }
+  populateRaceSelector();
+  raceSelect.addEventListener('change', () => loadRace(raceSelect.value));
 }
 
 window.addEventListener('DOMContentLoaded', init);
