@@ -46,8 +46,12 @@ export function destroyChart() {
 
 export interface Series { name: string; data: { x: Date; y: number }[] }
 
-export function renderChart(series: Series[]) {
+export function renderChart(series: Series[], selectedNames: string[] = []) {
   destroyChart();
+  if(selectedNames.length){
+    const set = new Set(selectedNames);
+    series = series.filter(s => set.has(s.name));
+  }
   const datasets = series.map((s, i) => ({
     label: s.name,
     data: s.data,
