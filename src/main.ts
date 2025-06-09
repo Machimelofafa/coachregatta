@@ -1,6 +1,6 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings } from './raceLoader';
 import { initChart, renderChart, Series, computeSectorTimes } from './chart';
-import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis, showSectors } from './ui';
+import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats } from './ui';
 import { computeSeries, calculateBoatStatistics } from './speedUtils';
 import { getColor } from './palette';
 import type { RaceSetup, BoatStats, Moment, CourseNode } from './types';
@@ -34,6 +34,10 @@ let classChoices: Choices | null = null;
 let comparisonMode = false;
 
 function drawTracks(pos: Record<number, Moment[]>, ids: number[]) {
+  if(isComparisonMode()){
+    const set = new Set(getComparisonBoats());
+    ids = ids.filter(id => set.has(getBoatNames()[id] || String(id)));
+  }
   polylines.forEach(p => p.remove());
   polylines = [];
   const group: L.Polyline[] = [];
@@ -89,13 +93,22 @@ initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsBy
 disableSelectors();
 compareToggle.addEventListener('change', () => {
   comparisonMode = compareToggle.checked;
+  setComparisonMode(comparisonMode);
   if(comparisonMode){
     boatSelect.setAttribute('multiple', '');
+    const names = Array.from(boatSelect.selectedOptions).map(o=>o.value).filter(Boolean);
+    setComparisonBoats(names);
   } else {
     boatSelect.removeAttribute('multiple');
     boatSelect.selectedIndex = 0;
+    setComparisonBoats([]);
   }
   refreshDropdowns();
+  if(boatSelect.value){
+    handleSelectionChange({ boat: boatSelect.value });
+  } else if(classSelect.value){
+    handleSelectionChange({ className: classSelect.value });
+  }
 });
 sectorToggle.addEventListener('change', drawSectorPolygons);
 
@@ -104,8 +117,8 @@ async function handleSelectionChange(sel:{ boat?: string; className?: string }){
   let ids: number[] = [];
   let selectedNames: string[] = [];
   if(sel.boat){
-    if(comparisonMode){
-      selectedNames = Array.from(boatSelect.selectedOptions).map(o=>o.value).filter(Boolean);
+    if(isComparisonMode()){
+      selectedNames = getComparisonBoats();
       ids = selectedNames.map(n => getBoatId(n)).filter((n):n is number => !!n);
     } else {
       const id = getBoatId(sel.boat);
