@@ -7,13 +7,19 @@
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/chroma-js": "^3.1.1",
     "chartjs-node-canvas": "^5.0.0",
-    "chroma-js": "^3.1.2",
     "get-contrast": "^3.0.0",
     "pixelmatch": "^5.3.0",
     "pngjs": "^7.0.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.9",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "chartjs-plugin-zoom": "^2.2.0",
+    "chroma-js": "^3.1.2"
   }
 }
