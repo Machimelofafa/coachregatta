@@ -2,9 +2,12 @@ import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSet
 import { initChart, renderChart, Series } from './chart';
 import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis } from './ui';
 import { computeSeries, calculateBoatStatistics } from './speedUtils';
-import type { RaceSetup, BoatStats } from './types';
+import { getColor } from './palette';
+import type { RaceSetup, BoatStats, Moment } from './types';
 import Choices from 'choices.js';
 import 'choices.js/public/assets/styles/choices.min.css';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const boatSelect  = document.getElementById('boatSelect') as HTMLSelectElement;
 const classSelect = document.getElementById('classSelect') as HTMLSelectElement;
@@ -17,10 +20,34 @@ const distInput   = document.getElementById('distInput') as HTMLInputElement;
 const percentileInput = document.getElementById('percentileInput') as HTMLInputElement;
 const boatStatus  = document.getElementById('boatStatus') as HTMLElement;
 const classStatus = document.getElementById('classStatus') as HTMLElement;
+const map = L.map('map-container');
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+map.setView([0, 0], 2);
+let polylines: L.Polyline[] = [];
 
 let boatChoices: Choices | null = null;
 let classChoices: Choices | null = null;
 let comparisonMode = false;
+
+function drawTracks(pos: Record<number, Moment[]>, ids: number[]) {
+  polylines.forEach(p => p.remove());
+  polylines = [];
+  const group: L.Polyline[] = [];
+  ids.forEach((id, idx) => {
+    const track = pos[id];
+    if(!track || !track.length) return;
+    const coords = track.map(m => [m.lat, m.lon] as [number, number]);
+    const poly = L.polyline(coords, { color: getColor(idx) }).addTo(map);
+    polylines.push(poly);
+    group.push(poly);
+  });
+  if(group.length){
+    const fg = L.featureGroup(group);
+    map.fitBounds(fg.getBounds());
+  }
+}
 
 function refreshDropdowns(){
   if(boatChoices) boatChoices.destroy();
@@ -75,6 +102,7 @@ async function handleSelectionChange(sel:{ boat?: string; className?: string }){
     return { name: getBoatNames()[id] || String(id), data: labels.map((t,j)=>({ x:t, y:sogKn[j] })) };
   }).filter(Boolean);
   renderChart(series, selectedNames);
+  drawTracks(positions, ids);
 }
 
 async function loadRace(raceId:string){
@@ -91,6 +119,7 @@ async function loadRace(raceId:string){
     if(track) boatStats[id] = calculateBoatStatistics(track);
   });
   displaySectorAnalysis(boatStats);
+  drawTracks({}, []);
 }
 
 async function init(){
