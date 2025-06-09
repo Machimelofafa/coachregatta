@@ -1,37 +1,64 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   margin: 1rem;
   padding: 0;
-  line-height: 1.4;
+  line-height: 1.6;
+  background-color: #f9f9fb;
+  color: #333;
 }
 
-label, select, input, button {
-  margin: 0.25rem 0.5rem 0.25rem 0;
+h1,
+h2 {
+  margin-top: 0;
+  color: var(--palette-5);
 }
 
-select, input[type="number"], button {
-  padding: 0.4rem 0.6rem;
+label,
+select,
+input,
+button {
+  margin: 0.5rem 0.5rem 0.5rem 0;
+}
+
+select,
+input[type='number'],
+button {
+  padding: 0.5rem 0.75rem;
   font-size: 1rem;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 6px;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
 button {
   background-color: var(--palette-5);
   color: #fff;
+  border: none;
   cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-button:hover {
+button:hover,
+button:focus {
   background-color: var(--palette-6);
+}
+
+button:focus,
+select:focus,
+input[type='number']:focus {
+  outline: none;
+  border-color: var(--palette-5);
+  box-shadow: 0 0 0 3px rgba(0, 114, 163, 0.3);
 }
 
 #error-container {
   display: none;
-  border: 1px solid red;
-  color: red;
-  padding: 0.5rem;
+  border: 1px solid var(--palette-1);
+  background-color: #ffe5e5;
+  color: #900;
+  padding: 0.75rem 1rem;
   margin: 1rem 0;
+  border-radius: 4px;
 }
 
 .lb-highlight {
@@ -42,8 +69,27 @@ button:hover {
   background-color: #ffef99;
 }
 
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+th,
+td {
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+tr:hover {
+  background-color: #f2f2f2;
+  transition: background-color 0.2s;
+}
+
 #map-container {
-  width: 900px;
+  width: 100%;
+  max-width: 900px;
   height: 400px;
   margin-top: 1rem;
 }
