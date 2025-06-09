@@ -42,9 +42,9 @@ export async function loadRace(raceId: string){
   document.getElementById('leaderboard-container')!.textContent = '';
   clearSectorTable();
 
-  const SETUP_URL = `public/${raceId}/RaceSetup.json`;
-  const POS_URL = `public/${raceId}/AllPositions3.json`;
-  const LEADER_URL = `public/${raceId}/leaderboard.json`;
+  const SETUP_URL = `/${raceId}/RaceSetup.json`;
+  const POS_URL = `/${raceId}/AllPositions3.json`;
+  const LEADER_URL = `/${raceId}/leaderboard.json`;
 
   try {
     boatSelect.value = '';
@@ -120,7 +120,7 @@ export async function loadRace(raceId: string){
 export async function populateRaceSelector(){
   const raceSelect = document.getElementById('raceSelect') as HTMLSelectElement;
   try{
-    const races = await fetchJSON<{ id: string; name: string }[]>('public/races.json');
+    const races = await fetchJSON<{ id: string; name: string }[]>('/races.json');
     raceSelect.innerHTML = '<option value="">Select a race</option>';
     races.forEach(race=>{ const option=document.createElement('option'); option.value=race.id; option.textContent=race.name; raceSelect.appendChild(option); });
   }catch(err){
