@@ -33,7 +33,7 @@ async function loadRace(raceId) {
       classSelect.innerHTML = '<option value="">Select a race first</option>';
       boatSelect.disabled = true;
       classSelect.disabled = true;
-      if(chart) chart.destroy();
+      destroyChart();
       chartTitle.textContent = '';
       document.getElementById('leaderboard-container').innerHTML = '';
       clearSectorTable();
@@ -46,7 +46,7 @@ async function loadRace(raceId) {
     classSelect.innerHTML = '<option value="">Loading...</option>';
     boatSelect.disabled = true;
     classSelect.disabled = true;
-    if(chart) chart.destroy();
+    destroyChart();
     chartTitle.textContent = '';
     document.getElementById('leaderboard-container').textContent = '';
     clearSectorTable();
@@ -242,7 +242,7 @@ function plotBoat (boatId, boatName, filtered) {
   const sectorInfo = computeSectorTimes(track);
   chartTitle.textContent = `${boatName} – Speed (${filtered ? 'filtered' : 'raw'})`;
 
-  if (chart) chart.destroy();        // clear old chart
+  destroyChart();
 
   chart = new Chart(ctx, {
     type : 'line',
@@ -334,7 +334,7 @@ function plotClass (classKey, filtered) {
                                        : { times:[], labels:[], mids:[] };
   chartTitle.textContent = `${info.name} – Speed (${filtered ? 'filtered' : 'raw'})`;
 
-  if (chart) chart.destroy();
+  destroyChart();
 
   chart = new Chart(ctx, {
     type:'line',
@@ -491,6 +491,13 @@ const sectorPlugin = {
     ctx.restore();
   }
 };
+
+function destroyChart () {
+  if (!chart) return;
+  chart.destroy();
+  Chart.unregister(sectorPlugin);
+  chart = null;
+}
 
 function renderLeaderboard (classKey = null, boatId = null) {
   const container = document.getElementById('leaderboard-container');
