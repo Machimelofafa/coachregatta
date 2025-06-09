@@ -14,11 +14,19 @@
       --palette-6:#0065c1;
       --palette-7:#7e44a4;
     }
+    #error-container {
+      display: none;
+      border: 1px solid red;
+      color: red;
+      padding: 0.5rem;
+      margin: 1rem 0;
+    }
   </style>
 
 </head>
 <body>
   <h1 id="raceTitle">Coach Regatta</h1>
+  <div id="error-container"></div>
 
   <label for="raceSelect">Choose a race:</label>
   <select id="raceSelect">
