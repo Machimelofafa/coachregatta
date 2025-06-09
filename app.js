@@ -19,25 +19,21 @@ let courseNodes = [];           // course waypoints for sector boundaries
 let classInfo = {};             // { key:{ name, boats:[ids] } }
 let boatNames = {};             // id -> name
 
-const availableRaces = {
-  'dgbr2025': 'De Guingand Bowl Race 2025',
-  'cervantes2025': 'Cervantes Trophy Race 2025'
-};
-
-function populateRaceSelector() {
-    raceSelect.innerHTML = '<option value="">Select a race</option>';
-    for (const raceId in availableRaces) {
-        const option = document.createElement('option');
-        option.value = raceId;
-        option.textContent = availableRaces[raceId];
-        raceSelect.appendChild(option);
+async function loadRace(raceId) {
+    if (!raceId) {
+      // Clear everything if no race is selected
+      raceTitle.textContent = 'Coach Regatta';
+      boatSelect.innerHTML = '<option value="">Select a race first</option>';
+      classSelect.innerHTML = '<option value="">Select a race first</option>';
+      boatSelect.disabled = true;
+      classSelect.disabled = true;
+      if(chart) chart.destroy();
+      chartTitle.textContent = '';
+      return;
     }
-    raceSelect.firstElementChild.textContent = 'Select a race';
-}
 
-async function loadRace(race) {
-    if (!race) return;
-    raceTitle.textContent = availableRaces[race];
+    const raceName = raceSelect.selectedOptions[0].text;
+    raceTitle.textContent = raceName;
     boatSelect.innerHTML = '<option value="">Loading...</option>';
     classSelect.innerHTML = '<option value="">Loading...</option>';
     boatSelect.disabled = true;
@@ -45,8 +41,8 @@ async function loadRace(race) {
     if(chart) chart.destroy();
     chartTitle.textContent = '';
 
-    const SETUP_URL = `public/${race}/RaceSetup.json`;
-    const POS_URL   = `public/${race}/AllPositions3.json`;
+    const SETUP_URL = `public/${raceId}/RaceSetup.json`;
+    const POS_URL   = `public/${raceId}/AllPositions3.json`;
 
     try {
         boatSelect.value = '';
@@ -60,14 +56,17 @@ async function loadRace(race) {
         boatSelect.innerHTML = '';
         classSelect.innerHTML = '';
 
-        // ----- build class list from tags -----
+        // --- Populate Class Select ---
+        classSelect.innerHTML = '';
+        const defaultClassOpt = document.createElement('option');
+        defaultClassOpt.value = "";
+        defaultClassOpt.textContent = 'Select a class';
+        classSelect.appendChild(defaultClassOpt);
+
         (setup.tags || [])
           .filter(t => /^IRC /i.test(t.name) && !/Overall|Two Handed/i.test(t.name))
           .forEach(tag => {
-            const key = tag.name
-              .toLowerCase()
-              .replace(/\s+/g, '')
-              .replace('zero', '0');
+            const key = tag.name.toLowerCase().replace(/\s+/g, '').replace('zero', '0');
             classInfo[key] = { name: tag.name, id: tag.id, boats: [] };
 
             const opt = document.createElement('option');
@@ -75,21 +74,23 @@ async function loadRace(race) {
             opt.textContent = tag.name;
             classSelect.appendChild(opt);
           });
+        classSelect.value = '';
+        classSelect.disabled = false;
 
-        if (Object.keys(classInfo).length) {
-          classSelect.disabled = false;
-          classSelect.insertAdjacentHTML('afterbegin', '<option value="">Select a class</option>');
-        } else {
-          classSelect.insertAdjacentHTML('afterbegin', '<option value="">No classes available</option>');
-        }
+        // --- Populate Boat Select ---
+        boatNames = {};
+        boatSelect.innerHTML = '';
+        const defaultBoatOpt = document.createElement('option');
+        defaultBoatOpt.value = "";
+        defaultBoatOpt.textContent = 'Select a boat';
+        boatSelect.appendChild(defaultBoatOpt);
 
-        // RaceSetup.json holds boats inside `teams`
         setup.teams
              .sort((a, b) => a.name.localeCompare(b.name))
              .forEach(team => {
                const o   = document.createElement('option');
-               o.value   = team.id;          // numeric ID
-               o.textContent = team.name;    // friendly name
+               o.value   = team.id;
+               o.textContent = team.name;
                boatSelect.appendChild(o);
 
                boatNames[team.id] = team.name;
@@ -99,9 +100,8 @@ async function loadRace(race) {
                  if (tags.includes(cid)) classInfo[k].boats.push(team.id);
                });
              });
-
+        boatSelect.value = '';
         boatSelect.disabled = false;
-        boatSelect.insertAdjacentHTML('afterbegin', '<option value="">Select a boat</option>');
 
         /* 2.  positions file  ---------------------------------------------- */
         // AllPositions3.json is an ARRAY of { id, moments:[…] }
@@ -141,11 +141,28 @@ async function loadRace(race) {
 
 // ---------- MAIN ----------
 async function init () {
-  populateRaceSelector();
+  await populateRaceSelector();
   raceSelect.addEventListener('change', () => loadRace(raceSelect.value));
 }
 
 window.addEventListener('DOMContentLoaded', init);
+
+async function populateRaceSelector() {
+  try {
+    const races = await fetchJSON('public/races.json');
+    raceSelect.innerHTML = '<option value="">Select a race</option>';
+    races.forEach(race => {
+      const option = document.createElement('option');
+      option.value = race.id;
+      option.textContent = race.name;
+      raceSelect.appendChild(option);
+    });
+  } catch (err) {
+    console.error("Could not load races.json", err);
+    raceSelect.innerHTML = '<option value="">Could not load races</option>';
+    raceSelect.disabled = true;
+  }
+}
 
 /* ---------- helpers -------------------------------------------------- */
 
