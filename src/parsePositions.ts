@@ -13,7 +13,12 @@ export function haversineNm(la1:number, lo1:number, la2:number, lo2:number){
 export function parsePositions(boats: BoatData[], epsNm: number = EPSILON_NM): Record<number, Moment[]> {
   const out: Record<number, Moment[]> = {};
   (boats || []).forEach(b => {
-    out[b.id] = dedupeMoments(b.moments || [], epsNm);
+    const moments = (b.moments || []).map(m => ({
+      at: Number(m.at),
+      lat: Number(m.lat),
+      lon: Number(m.lon)
+    }));
+    out[b.id] = dedupeMoments(moments, epsNm);
   });
   return out;
 }
