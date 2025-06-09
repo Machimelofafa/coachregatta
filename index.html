@@ -24,32 +24,32 @@
   <div id="error-container"></div>
 
   <label for="raceSelect">Choose a race:</label>
-  <select id="raceSelect">
+  <select id="raceSelect" aria-label="Choose a race to display">
     <option value="">Loading…</option>
   </select>
 
   <!-- Boat chooser -->
   <label for="boatSelect">Choose a boat:</label><span id="boatStatus" style="margin-left:0.5rem"></span>
-  <select id="boatSelect" disabled>
+  <select id="boatSelect" disabled aria-label="Choose a boat to display">
     <option value="">Select a race first</option>
   </select>
 
   <label for="classSelect" style="margin-left:2rem">Choose a class:</label><span id="classStatus" style="margin-left:0.5rem"></span>
-  <select id="classSelect" disabled>
+  <select id="classSelect" disabled aria-label="Choose a class to filter by">
     <option value="">Select a race first</option>
   </select>
 
   <label style="margin-left:2rem">
-    <input type="checkbox" id="rawToggle">
+    <input type="checkbox" id="rawToggle" aria-label="Toggle raw points">
     Show raw points
   </label>
-<details id="settingsDrawer" style="margin-top:1rem;">
+<details id="settingsDrawer" style="margin-top:1rem;" aria-label="Settings options">
   <summary>Settings</summary>
   <label>Glitch distance (nm):
-    <input type="number" id="distInput" step="0.1" min="0">
+    <input type="number" id="distInput" step="0.1" min="0" aria-label="Glitch distance in nautical miles">
   </label><br>
   <label>Speed ceiling percentile:
-    <input type="number" id="percentileInput" step="1" min="50" max="100">
+    <input type="number" id="percentileInput" step="1" min="50" max="100" aria-label="Speed ceiling percentile">
   </label>
 </details>
 
@@ -57,7 +57,7 @@
   <div id="main-content-container" style="display:flex; gap:2rem; align-items:flex-start; margin-top:2rem;">
     <div id="chart-container">
       <h2 id="chartTitle"></h2>
-      <canvas id="speedChart" width="900" height="400"></canvas>
+      <canvas id="speedChart" width="900" height="400" role="img" aria-label="A line chart showing the speed of the boats over the duration of the race."></canvas>
     </div>
     <div id="leaderboard-container"></div>
   </div>
