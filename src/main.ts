@@ -161,7 +161,7 @@ async function loadRace(raceId:string){
   boatStats = {};
   ids.forEach(id => {
     const track = positions[id];
-    if(track) boatStats[id] = calculateBoatStatistics(track);
+    if(track) boatStats[id] = calculateBoatStatistics(track, settings);
   });
   displaySectorAnalysis(boatStats);
   drawTracks({}, []);

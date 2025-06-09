@@ -10,7 +10,7 @@ function makeTrack(){
   return pts;
 }
 
-const res = calculateBoatStatistics(makeTrack());
+const res = calculateBoatStatistics(makeTrack(), { distNm: Infinity, percentile: 100 });
 assert.ok(Math.abs(res.maxSpeed - 30) < 0.1);
 assert.ok(Math.abs(res.avgSpeed - (90/11)) < 0.1);
 console.log('ok');
