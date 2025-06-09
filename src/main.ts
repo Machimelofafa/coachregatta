@@ -1,6 +1,6 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings } from './raceLoader';
 import { initChart, renderChart, Series } from './chart';
-import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames } from './ui';
+import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors } from './ui';
 import { computeSeries } from './speedUtils';
 import type { RaceSetup } from './types';
 
@@ -18,6 +18,7 @@ let raceSetup: RaceSetup | null = null;
 
 initChart({ ctx, chartTitleEl: chartTitle });
 initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: {}, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle }, handleSelectionChange);
+disableSelectors();
 
 async function handleSelectionChange(sel:{ boat?: string; className?: string }){
   if(!currentRace || !raceSetup) return;
@@ -52,7 +53,13 @@ async function init(){
   if(!races.length) return;
   raceSelect.value = races[0].id;
   await loadRace(races[0].id);
-  raceSelect.addEventListener('change', () => loadRace(raceSelect.value));
+  raceSelect.addEventListener('change', () => {
+    if(!raceSelect.value){
+      disableSelectors();
+      return;
+    }
+    loadRace(raceSelect.value);
+  });
   distInput.value = String(settings.distNm);
   percentileInput.value = String(settings.percentile);
   distInput.addEventListener('change', () => { settings.distNm = Number(distInput.value); saveSettings(); });
