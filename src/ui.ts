@@ -14,6 +14,16 @@ let rawToggle: HTMLInputElement;
 let sectorToggle: HTMLInputElement;
 let selectionCb: (sel:{boat?:string; className?:string})=>void = ()=>{};
 let nameToId: Record<string, number> = {};
+let comparisonMode = false;
+let comparisonBoats: string[] = [];
+
+export function setComparisonMode(on: boolean){
+  comparisonMode = on;
+  if(!on) comparisonBoats = [];
+}
+export function isComparisonMode(){ return comparisonMode; }
+export function setComparisonBoats(names: string[]){ comparisonBoats = names.slice(); }
+export function getComparisonBoats(){ return comparisonBoats.slice(); }
 
 export function disableSelectors(){
   if(boatSelect){
@@ -57,6 +67,12 @@ export function initUI(opts:{
   sectorToggle = opts.sectorToggleEl;
   selectionCb = onSelect;
   boatSelect.addEventListener('change', () => {
+    if(boatSelect.hasAttribute('multiple')){
+      const names = Array.from(boatSelect.selectedOptions).map(o=>o.value).filter(Boolean);
+      setComparisonBoats(names);
+    } else {
+      setComparisonBoats([]);
+    }
     if(boatSelect.value){
       classSelect.selectedIndex = 0;
       selectionCb({ boat: boatSelect.value });

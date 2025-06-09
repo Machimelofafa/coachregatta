@@ -3,6 +3,7 @@ import { computeSeries, DEFAULT_SETTINGS } from './speedUtils';
 import { getColor } from './palette';
 import type { Moment, CourseNode } from './types';
 import { haversineNm } from './parsePositions';
+import { isComparisonMode, getComparisonBoats } from './ui';
 import Chart from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
@@ -50,7 +51,10 @@ export interface SectorInfo { times: number[]; labels: string[]; mids: number[] 
 
 export function renderChart(series: Series[], selectedNames: string[] = [], sectorInfo?: SectorInfo) {
   destroyChart();
-  if(selectedNames.length){
+  if(isComparisonMode()){
+    const set = new Set(getComparisonBoats());
+    series = series.filter(s => set.has(s.name));
+  } else if(selectedNames.length){
     const set = new Set(selectedNames);
     series = series.filter(s => set.has(s.name));
   }
