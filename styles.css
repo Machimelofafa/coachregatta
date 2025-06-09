@@ -41,3 +41,9 @@ button:hover {
 .selected {
   background-color: #ffef99;
 }
+
+#map-container {
+  width: 900px;
+  height: 400px;
+  margin-top: 1rem;
+}

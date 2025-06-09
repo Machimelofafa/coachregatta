@@ -21,6 +21,7 @@
     "chartjs-adapter-date-fns": "^3.0.0",
     "chartjs-plugin-zoom": "^2.2.0",
     "choices.js": "^11.1.0",
-    "chroma-js": "^3.1.2"
+    "chroma-js": "^3.1.2",
+    "leaflet": "^1.9.4"
   }
 }
