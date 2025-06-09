@@ -3,7 +3,8 @@
   "scripts": {
     "test": "tsx test/computeSeries.test.ts && tsx test/parsePositions.test.ts && tsx test/chart-contrast.test.ts",
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "chartjs-node-canvas": "^5.0.0",

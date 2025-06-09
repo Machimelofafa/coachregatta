@@ -5,16 +5,17 @@ export const DEFAULT_SETTINGS = {
 };
 
 import { haversineNm } from './parsePositions';
+import type { Moment } from './types';
 
-let ceilCache = new WeakMap();
+let ceilCache = new WeakMap<object, number>();
 
 export function clearCache() { ceilCache = new WeakMap(); }
-export function computeSeries(rawMoments, filtered = true, cfg = {}) {
+export function computeSeries(rawMoments: Moment[], filtered: boolean = true, cfg: Partial<typeof DEFAULT_SETTINGS> = {}) {
   const settings = { ...DEFAULT_SETTINGS, ...cfg };
   const moms = (rawMoments || []).slice().sort((a, b) => a.at - b.at);
 
-  const legs = [];
-  const speeds = [];
+  const legs: { t: number; sog: number; dist: number }[] = [];
+  const speeds: number[] = [];
   for (let i = 1; i < moms.length; i++) {
     const A = moms[i - 1];
     const B = moms[i];
@@ -26,14 +27,14 @@ export function computeSeries(rawMoments, filtered = true, cfg = {}) {
     speeds.push(sog);
   }
 
-  let ceilKn = ceilCache.get(rawMoments);
+  let ceilKn = ceilCache.get(rawMoments as unknown as object);
   if (ceilKn === undefined) {
     ceilKn = percentile(speeds, settings.percentile);
     ceilCache.set(rawMoments, ceilKn);
   }
 
-  const sogArr = [];
-  const labels = [];
+  const sogArr: number[] = [];
+  const labels: Date[] = [];
   legs.forEach(({ t, sog, dist }) => {
     const keep = !filtered || (sog <= ceilKn && dist <= settings.distNm);
     if (keep) {
@@ -48,17 +49,17 @@ export function computeSeries(rawMoments, filtered = true, cfg = {}) {
   return { sogKn: sogArr, labels };
 }
 
-function percentile(arr, p) {
+function percentile(arr: number[], p: number): number {
   if (!arr.length) return 0;
   const sorted = arr.slice().sort((a, b) => a - b);
   const idx = Math.floor((p / 100) * (sorted.length - 1));
   return sorted[idx];
 }
 
-function smooth(arr, len) {
+function smooth(arr: number[], len: number): number[] {
   if (len < 2) return arr;
   const half = Math.floor(len / 2);
-  const out = [];
+  const out: number[] = [];
   for (let i = 0; i < arr.length; i++) {
     let sum = 0, cnt = 0;
     for (let k = -half; k <= half; k++) {

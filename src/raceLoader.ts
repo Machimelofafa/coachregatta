@@ -2,12 +2,13 @@ import { parsePositions } from './parsePositions';
 import { clearCache, DEFAULT_SETTINGS } from './speedUtils';
 import { plotBoat, plotClass } from './chart';
 import { renderLeaderboard, clearSectorTable, calculateSectorStats, renderSectorTable } from './ui';
+import type { Moment, CourseNode, RaceSetup, BoatData, LeaderboardEntry } from './types';
 
-export let positionsByBoat: Record<number, any[]> = {};
-export let courseNodes: any[] = [];
-export let classInfo: Record<string, any> = {};
+export let positionsByBoat: Record<number, Moment[]> = {};
+export let courseNodes: CourseNode[] = [];
+export let classInfo: Record<string, { name: string; id: number; boats: number[] }> = {};
 export let boatNames: Record<number, string> = {};
-export let leaderboardData: any[] = [];
+export let leaderboardData: LeaderboardEntry[] = [];
 
 export const settings = loadSettings();
 
@@ -50,7 +51,7 @@ export async function loadRace(raceId: string){
     classSelect.value = '';
     leaderboardData = [];
 
-    const setup = await fetchJSON(SETUP_URL);
+    const setup = await fetchJSON<RaceSetup>(SETUP_URL);
     courseNodes = setup.course?.nodes || [];
     boatSelect.innerHTML = '';
     classSelect.innerHTML = '';
@@ -85,11 +86,11 @@ export async function loadRace(raceId: string){
     });
     boatSelect.value=''; boatSelect.disabled=false;
 
-    const boats=await fetchJSON(POS_URL);
-    positionsByBoat=parsePositions(boats);
+    const boats = await fetchJSON<BoatData[]>(POS_URL);
+    positionsByBoat = parsePositions(boats);
 
-    const lbJSON=await fetchJSON(LEADER_URL);
-    leaderboardData=(lbJSON.tags?.[0]?.teams || []).map((t:any)=>({ id:t.id, rank:t.rankR ?? t.rankS, status:t.status, corrected:t.cElapsedFormatted }));
+    const lbJSON = await fetchJSON<{ tags?: { teams: { id: number; rankR?: number; rankS?: number; status: string; cElapsedFormatted: string }[] }[] }>(LEADER_URL);
+    leaderboardData = (lbJSON.tags?.[0]?.teams || []).map(t => ({ id: t.id, rank: t.rankR ?? t.rankS, status: t.status, corrected: t.cElapsedFormatted }));
 
     boatSelect.onchange=()=>{ classSelect.value=''; drawBoat(); };
     classSelect.onchange=()=>{ boatSelect.value=''; drawClass(); };
@@ -98,8 +99,14 @@ export async function loadRace(raceId: string){
     renderLeaderboard();
 
     function drawBoat(){
-      const id=Number(boatSelect.value); const name=boatNames[id] || boatSelect.selectedOptions[0].text;
-      if(id){ (window as any).plotBoat(id,name,!rawToggle.checked); renderLeaderboard(null,id); calculateSectorStats(id).then(renderSectorTable); }
+      if(!boatSelect.value) return;
+      const id = parseInt(boatSelect.value, 10);
+      const name = boatNames[id] || boatSelect.selectedOptions[0].text;
+      if(!isNaN(id)){
+        (window as any).plotBoat(id,name,!rawToggle.checked);
+        renderLeaderboard(null,id);
+        calculateSectorStats(id).then(renderSectorTable);
+      }
     }
     function drawClass(){
       const classKey=classSelect.value;
@@ -113,9 +120,9 @@ export async function loadRace(raceId: string){
 export async function populateRaceSelector(){
   const raceSelect = document.getElementById('raceSelect') as HTMLSelectElement;
   try{
-    const races = await fetchJSON('public/races.json');
+    const races = await fetchJSON<{ id: string; name: string }[]>('public/races.json');
     raceSelect.innerHTML = '<option value="">Select a race</option>';
-    races.forEach((race:any)=>{ const option=document.createElement('option'); option.value=race.id; option.textContent=race.name; raceSelect.appendChild(option); });
+    races.forEach(race=>{ const option=document.createElement('option'); option.value=race.id; option.textContent=race.name; raceSelect.appendChild(option); });
   }catch(err){
     console.error('Could not load races.json', err);
     raceSelect.innerHTML = '<option value="">Could not load races</option>';
@@ -132,8 +139,8 @@ export function saveSettings(){
   localStorage.setItem('settings', JSON.stringify({ distNm: settings.distNm, percentile: settings.percentile, smoothLen: settings.smoothLen }));
 }
 
-export async function fetchJSON(url:string){
+export async function fetchJSON<T>(url: string): Promise<T> {
   const r = await fetch(url).catch(err => { throw new Error(`${url}: ${err}`); });
   if(!r.ok) throw new Error(`${url}: ${r.status}`);
-  return r.json();
+  return r.json() as Promise<T>;
 }

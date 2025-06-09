@@ -1,8 +1,10 @@
 
-let leaderboardData: any[] = [];
-let classInfo: Record<string, any> = {};
+import type { LeaderboardEntry, Moment, CourseNode, SectorStat } from './types';
+
+let leaderboardData: LeaderboardEntry[] = [];
+let classInfo: Record<string, { name: string; id: number; boats: number[] }> = {};
 let boatNames: Record<number, string> = {};
-let positionsByBoat: Record<number, any[]> = {};
+let positionsByBoat: Record<number, Moment[]> = {};
 let chart: any;
 let chartTitle: HTMLElement;
 let boatSelect: HTMLSelectElement;
@@ -10,15 +12,15 @@ let classSelect: HTMLSelectElement;
 let rawToggle: HTMLInputElement;
 
 export function initUI(opts:{
-  leaderboardDataRef:any[];
-  classInfoRef:Record<string,any>;
-  boatNamesRef:Record<number,string>;
-  positionsByBoatRef:Record<number,any[]>;
-  chartRef:any;
-  chartTitleEl:HTMLElement;
-  boatSelectEl:HTMLSelectElement;
-  classSelectEl:HTMLSelectElement;
-  rawToggleEl:HTMLInputElement;
+  leaderboardDataRef: LeaderboardEntry[];
+  classInfoRef: Record<string, { name: string; id: number; boats: number[] }>;
+  boatNamesRef: Record<number, string>;
+  positionsByBoatRef: Record<number, Moment[]>;
+  chartRef: any;
+  chartTitleEl: HTMLElement;
+  boatSelectEl: HTMLSelectElement;
+  classSelectEl: HTMLSelectElement;
+  rawToggleEl: HTMLInputElement;
 }){
   leaderboardData = opts.leaderboardDataRef;
   classInfo = opts.classInfoRef;
@@ -56,13 +58,13 @@ export function clearSectorTable(){
   if(c) c.innerHTML='';
 }
 
-export async function calculateSectorStats(boatId:number){
+export async function calculateSectorStats(boatId: number): Promise<SectorStat[]> {
   const track = positionsByBoat[boatId];
   if(!track) return [];
   const moms = track.slice().sort((a,b)=>a.at-b.at);
-  const courseNodes = (window as any).courseNodes as any[] || [];
+  const courseNodes = (window as any).courseNodes as CourseNode[] || [];
   if(!courseNodes.length) return [];
-  const stats:any[]=[];
+  const stats: SectorStat[] = [];
   for(let i=0;i<courseNodes.length-1;i++){
     const start=courseNodes[i];
     const end=courseNodes[i+1];
@@ -97,7 +99,7 @@ function computeDistance(la1:number,lo1:number,la2:number,lo2:number){
   return 2*R*Math.asin(Math.sqrt(a));
 }
 
-export function renderSectorTable(stats:any[]){
+export function renderSectorTable(stats: SectorStat[]){
   const container=document.getElementById('sector-analysis-container');
   if(!container) return;
   if(!stats.length){ container.innerHTML=''; return; }
@@ -117,10 +119,12 @@ export function formatDuration(sec:number){
 
 export function replotCurrent(){
   if(boatSelect.value){
-    const id=Number(boatSelect.value);
-    const name=boatNames[id] || boatSelect.selectedOptions[0].text;
-    (window as any).plotBoat(id,name,!rawToggle.checked);
-    renderLeaderboard(null,id);
+    const id = parseInt(boatSelect.value, 10);
+    const name = boatNames[id] || boatSelect.selectedOptions[0].text;
+    if(!isNaN(id)){
+      (window as any).plotBoat(id,name,!rawToggle.checked);
+      renderLeaderboard(null,id);
+    }
   }else if(classSelect.value){
     (window as any).plotClass(classSelect.value,!rawToggle.checked);
     renderLeaderboard(classSelect.value);

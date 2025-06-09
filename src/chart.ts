@@ -1,20 +1,21 @@
 // Chart rendering and helpers
-import { computeSeries } from './speedUtils';
+import { computeSeries, DEFAULT_SETTINGS } from './speedUtils';
 import { getColor } from './palette';
+import type { Moment, CourseNode } from './types';
 
 // Global state provided by main.ts
-let courseNodes: any[] = [];
-let positionsByBoat: Record<number, any[]> = {};
-let classInfo: Record<string, any> = {};
+let courseNodes: CourseNode[] = [];
+let positionsByBoat: Record<number, Moment[]> = {};
+let classInfo: Record<string, { name: string; id: number; boats: number[] }> = {};
 let boatNames: Record<number, string> = {};
 let chart: any;
 let chartTitle: HTMLElement;
 let ctx: CanvasRenderingContext2D;
 
 export function initChart(opts: {
-  courseNodesRef: any[];
-  positionsByBoatRef: Record<number, any[]>;
-  classInfoRef: Record<string, any>;
+  courseNodesRef: CourseNode[];
+  positionsByBoatRef: Record<number, Moment[]>;
+  classInfoRef: Record<string, { name: string; id: number; boats: number[] }>;
   boatNamesRef: Record<number, string>;
   chartTitleEl: HTMLElement;
   ctx: CanvasRenderingContext2D;
@@ -36,7 +37,7 @@ export function destroyChart() {
   chart = null;
 }
 
-export function plotBoat(boatId: number, boatName: string, filtered: boolean, settings: any) {
+export function plotBoat(boatId: number, boatName: string, filtered: boolean, settings: Partial<typeof DEFAULT_SETTINGS>) {
   const track = positionsByBoat[boatId];
   if (!track) return;
   const { sogKn, labels } = computeSeries(track, filtered, settings);
@@ -84,10 +85,10 @@ export function plotBoat(boatId: number, boatName: string, filtered: boolean, se
   });
 }
 
-export function plotClass(classKey: string, filtered: boolean, settings: any) {
+export function plotClass(classKey: string, filtered: boolean, settings: Partial<typeof DEFAULT_SETTINGS>) {
   const info = classInfo[classKey];
   if (!info) return;
-  const datasets: any[] = [];
+  const datasets: { label: string; data: { x: Date; y: number }[]; borderColor: string; backgroundColor: string; borderWidth: number; pointRadius: number; pointHoverRadius: number; spanGaps: boolean; cubicInterpolationMode: string }[] = [];
   const boatsArr = info.boats.slice();
   boatsArr.forEach((boatId: number, i: number) => {
     const track = positionsByBoat[boatId];
@@ -158,7 +159,7 @@ function haversineNm(la1:number,lo1:number,la2:number,lo2:number){
   return 2*R_EARTH_NM*Math.asin(Math.sqrt(a));
 }
 
-export function computeSectorTimes(moments:any[]){
+export function computeSectorTimes(moments: Moment[]){
   if (!courseNodes.length) return { times: [], labels: [], mids: [] };
   const moms = moments.slice().sort((a,b)=>a.at-b.at);
   const times:number[] = [], labels:string[] = [], mids:number[] = [];
@@ -167,7 +168,7 @@ export function computeSectorTimes(moments:any[]){
   for (let i=1;i<courseNodes.length;i++){
     const node=courseNodes[i];
     const { lat, lon } = node;
-    let best = { dist: Infinity, at: null as number|null };
+    let best: { dist: number; at: number | null } = { dist: Infinity, at: null };
     moms.forEach(m => { const d=haversineNm(lat,lon,m.lat,m.lon); if (d<best.dist) best={dist:d,at:m.at}; });
     if (best.at!==null){
       times.push(best.at);

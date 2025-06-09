@@ -9,7 +9,7 @@ export const palette = [
   '#7e44a4'
 ];
 
-export function getColor(idx) {
+export function getColor(idx: number) {
   if (typeof document !== 'undefined') {
     const root = document.documentElement;
     if (root) {
