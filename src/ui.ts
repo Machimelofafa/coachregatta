@@ -13,6 +13,24 @@ let rawToggle: HTMLInputElement;
 let selectionCb: (sel:{boat?:string; className?:string})=>void = ()=>{};
 let nameToId: Record<string, number> = {};
 
+export function disableSelectors(){
+  if(boatSelect){
+    boatSelect.disabled = true;
+    boatSelect.innerHTML = '<option value="">Select a race first</option>';
+  }
+  if(classSelect){
+    classSelect.disabled = true;
+    classSelect.innerHTML = '<option value="">Select a race first</option>';
+  }
+  if(boatSelect) boatSelect.selectedIndex = 0;
+  if(classSelect) classSelect.selectedIndex = 0;
+}
+
+export function enableSelectors(){
+  if(boatSelect) boatSelect.disabled = false;
+  if(classSelect) classSelect.disabled = false;
+}
+
 export function initUI(opts:{
   leaderboardDataRef: LeaderboardEntry[];
   classInfoRef: Record<string, { name: string; id: number; boats: number[] }>;
@@ -95,6 +113,7 @@ export function updateUiWithRace(setup: RaceSetup){
 
   boatSelect.selectedIndex = 0;
   classSelect.selectedIndex = 0;
+  enableSelectors();
 }
 
 export function getBoatId(name:string){ return nameToId[name]; }
