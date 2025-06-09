@@ -12,6 +12,8 @@ const ctx         = (document.getElementById('speedChart') as HTMLCanvasElement)
 const rawToggle   = document.getElementById('rawToggle') as HTMLInputElement;
 const distInput   = document.getElementById('distInput') as HTMLInputElement;
 const percentileInput = document.getElementById('percentileInput') as HTMLInputElement;
+const boatStatus  = document.getElementById('boatStatus') as HTMLElement;
+const classStatus = document.getElementById('classStatus') as HTMLElement;
 
 let currentRace = '';
 let raceSetup: RaceSetup | null = null;
@@ -53,12 +55,19 @@ async function init(){
   if(!races.length) return;
   raceSelect.value = races[0].id;
   await loadRace(races[0].id);
-  raceSelect.addEventListener('change', () => {
+  raceSelect.addEventListener('change', async () => {
     if(!raceSelect.value){
       disableSelectors();
+      boatStatus.textContent = '';
+      classStatus.textContent = '';
       return;
     }
-    loadRace(raceSelect.value);
+    boatStatus.textContent = 'Loading...';
+    classStatus.textContent = 'Loading...';
+    disableSelectors();
+    await loadRace(raceSelect.value);
+    boatStatus.textContent = '';
+    classStatus.textContent = '';
   });
   distInput.value = String(settings.distNm);
   percentileInput.value = String(settings.percentile);
