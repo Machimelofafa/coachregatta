@@ -1,5 +1,5 @@
 import { parsePositions } from './parsePositions';
-import type { RaceSetup, BoatData } from './types';
+import type { RaceSetup, BoatData, LeaderboardEntry } from './types';
 import { DEFAULT_SETTINGS } from './speedUtils';
 
 function showError(msg: string){
@@ -75,4 +75,22 @@ export async function fetchJSON<T>(url: string): Promise<T> {
   const r = await fetch(url).catch(err => { throw new Error(`${url}: ${err}`); });
   if(!r.ok) throw new Error(`${url}: ${r.status}`);
   return r.json() as Promise<T>;
+}
+
+export async function fetchLeaderboard(raceId: string): Promise<LeaderboardEntry[]> {
+  try {
+    const data = await fetchJSON<any>(`/${raceId}/leaderboard.json`);
+    clearError();
+    const teams = data?.tags?.[0]?.teams || [];
+    return teams.map((t: any) => ({
+      id: t.id,
+      rank: t.rankR ?? t.rankS,
+      status: t.status,
+      corrected: t.cElapsedFormatted
+    }));
+  } catch (err) {
+    console.error(err);
+    showError('Error: Could not load race data. Please check your connection and try again.');
+    return [];
+  }
 }
