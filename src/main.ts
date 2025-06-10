@@ -89,7 +89,14 @@ let boatStats: Record<number, BoatStats> = {};
 let courseNodes: CourseNode[] = [];
 
 initChart({ ctx, chartTitleEl: chartTitle });
-initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: {}, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle, sectorToggleEl: sectorToggle }, handleSelectionChange);
+initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: {}, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle, sectorToggleEl: sectorToggle }, async (sel: any) => {
+  if(sel.comparison !== undefined){
+    setComparisonMode(sel.comparison);
+    await updateChart();
+    return;
+  }
+  await handleSelectionChange(sel);
+});
 disableSelectors();
 compareToggle.addEventListener('change', () => {
   comparisonMode = compareToggle.checked;
@@ -104,11 +111,7 @@ compareToggle.addEventListener('change', () => {
     setComparisonBoats([]);
   }
   refreshDropdowns();
-  if(boatSelect.value){
-    handleSelectionChange({ boat: boatSelect.value });
-  } else if(classSelect.value){
-    handleSelectionChange({ className: classSelect.value });
-  }
+  updateChart();
 });
 sectorToggle.addEventListener('change', drawSectorPolygons);
 
@@ -145,6 +148,14 @@ async function handleSelectionChange(sel:{ boat?: string; className?: string }){
   }
   renderChart(series, selectedNames, showSectors() ? sectorInfo : undefined);
   drawTracks(positions, ids);
+}
+
+async function updateChart(){
+  if(boatSelect.value){
+    await handleSelectionChange({ boat: boatSelect.value });
+  } else if(classSelect.value){
+    await handleSelectionChange({ className: classSelect.value });
+  }
 }
 
 async function loadRace(raceId:string){
