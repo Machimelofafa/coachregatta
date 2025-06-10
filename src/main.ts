@@ -1,4 +1,4 @@
-import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings } from './raceLoader';
+import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings, fetchLeaderboard } from './raceLoader';
 import { initChart, renderChart, Series, computeSectorTimes } from './chart';
 import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats } from './ui';
 import { computeSeries, calculateBoatStatistics } from './speedUtils';
@@ -95,6 +95,12 @@ initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsBy
     await updateChart();
     return;
   }
+  if(sel.className){
+    settings.className = sel.className;
+    saveSettings();
+    const leaderboard = await fetchLeaderboard(currentRace);
+    if(raceSetup) updateUiWithRace(raceSetup, leaderboard);
+  }
   await handleSelectionChange(sel);
 });
 disableSelectors();
@@ -165,7 +171,8 @@ async function loadRace(raceId:string){
   courseNodes = raceSetup.course?.nodes || [];
   (window as any).courseNodes = courseNodes;
   drawSectorPolygons();
-  updateUiWithRace(raceSetup);
+  const leaderboard = await fetchLeaderboard(raceId);
+  updateUiWithRace(raceSetup, leaderboard);
   refreshDropdowns();
   const ids = raceSetup.teams.map(t => t.id);
   const positions = await fetchPositions(raceId, ids);

@@ -99,7 +99,8 @@ export function initUI(opts:{
   });
 }
 
-export function updateUiWithRace(setup: RaceSetup){
+export function updateUiWithRace(setup: RaceSetup, leaderboard: LeaderboardEntry[] = []){
+  leaderboardData = leaderboard.slice();
   nameToId = {};
   classInfo = {};
   boatNames = {};
