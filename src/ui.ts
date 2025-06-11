@@ -1,7 +1,7 @@
 
 import type { LeaderboardEntry, Moment, CourseNode, SectorStat, RaceSetup } from './types';
 import { highlightSeries } from './chart';
-import { setHighlightedBoatId } from './main';
+import { setHighlightedBoatId, togglePlayPause, setSpeed, scrubToTime } from './main';
 
 let leaderboardData: LeaderboardEntry[] = [];
 let classInfo: Record<string, { name: string; id: number; boats: number[] }> = {};
@@ -13,6 +13,11 @@ let boatSelect: HTMLSelectElement;
 let classSelect: HTMLSelectElement;
 let rawToggle: HTMLInputElement;
 let sectorToggle: HTMLInputElement;
+let playPauseBtn: HTMLButtonElement;
+let timelineScrubber: HTMLInputElement;
+let speed1x: HTMLButtonElement;
+let speed2x: HTMLButtonElement;
+let speed4x: HTMLButtonElement;
 let selectionCb: (sel:{boat?:string; className?:string})=>void = ()=>{};
 let nameToId: Record<string, number> = {};
 let comparisonMode = false;
@@ -66,6 +71,11 @@ export function initUI(opts:{
   classSelect = opts.classSelectEl;
   rawToggle = opts.rawToggleEl;
   sectorToggle = opts.sectorToggleEl;
+  playPauseBtn = document.getElementById('play-pause-btn') as HTMLButtonElement;
+  timelineScrubber = document.getElementById('timeline-scrubber') as HTMLInputElement;
+  speed1x = document.getElementById('speed-1x') as HTMLButtonElement;
+  speed2x = document.getElementById('speed-2x') as HTMLButtonElement;
+  speed4x = document.getElementById('speed-4x') as HTMLButtonElement;
   selectionCb = onSelect;
   boatSelect.addEventListener('change', () => {
     if(boatSelect.hasAttribute('multiple')){
@@ -98,6 +108,21 @@ export function initUI(opts:{
       selectionCb({ className: classSelect.value });
     }
   });
+
+  if(playPauseBtn){
+    playPauseBtn.addEventListener('click', () => {
+      togglePlayPause();
+      playPauseBtn.textContent = playPauseBtn.textContent === 'Play' ? 'Pause' : 'Play';
+    });
+  }
+  if(timelineScrubber){
+    timelineScrubber.addEventListener('input', () => {
+      scrubToTime(Number(timelineScrubber.value));
+    });
+  }
+  if(speed1x) speed1x.addEventListener('click', () => setSpeed(1));
+  if(speed2x) speed2x.addEventListener('click', () => setSpeed(2));
+  if(speed4x) speed4x.addEventListener('click', () => setSpeed(4));
 }
 
 export function updateUiWithRace(setup: RaceSetup, leaderboard: LeaderboardEntry[] = []){
