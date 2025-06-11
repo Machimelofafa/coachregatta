@@ -61,6 +61,14 @@ input[type='number']:focus {
   border-radius: 4px;
 }
 
+#controls-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  position: relative;
+  z-index: 10;
+}
+
 .lb-highlight {
   background-color: #d2ebff;
 }
