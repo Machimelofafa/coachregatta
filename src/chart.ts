@@ -111,6 +111,21 @@ export function renderChart(series: Series[], selectedNames: string[] = [], sect
         }
       },
       plugins:{
+        tooltip:{
+          mode:'index',
+          intersect:false,
+          callbacks:{
+            beforeBody(tooltipItems:any[]){
+              const lines:string[] = [];
+              tooltipItems.forEach(item=>{
+                const label = (item.dataset as any)?.label || item.datasetLabel || '';
+                lines.push(`${label}: ${item.formattedValue} knots`);
+              });
+              return lines;
+            },
+            label(){ return ''; }
+          }
+        },
         zoom:{
           zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' },
           pan:{ enabled:true, mode:'x' },
