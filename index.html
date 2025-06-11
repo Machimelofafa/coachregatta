@@ -61,14 +61,18 @@
   </label>
 </details>
 
-  <!-- Chart and leaderboard area -->
-  <div id="main-content-container" style="display:flex; gap:2rem; align-items:flex-start; margin-top:2rem;">
-    <div id="chart-container">
-      <h2 id="chartTitle"></h2>
-      <canvas id="speedChart" width="900" height="400" role="img" aria-label="A line chart showing the speed of the boats over the duration of the race."></canvas>
+  <!-- Map, chart and leaderboard area -->
+  <div id="main-container">
+    <div id="map-wrapper">
       <div id="map-container" aria-label="Map showing boat tracks"></div>
     </div>
-    <div id="leaderboard-container"></div>
+    <div id="chart-wrapper">
+      <h2 id="chartTitle"></h2>
+      <canvas id="speedChart" role="img" aria-label="A line chart showing the speed of the boats over the duration of the race."></canvas>
+    </div>
+    <div id="table-wrapper">
+      <div id="leaderboard-container"></div>
+    </div>
   </div>
 
   <!-- Sector analysis area -->
