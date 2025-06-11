@@ -95,6 +95,7 @@ tr:hover {
 #main-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto auto;
   gap: 1rem;
   margin-top: 2rem;
 }
@@ -109,11 +110,27 @@ tr:hover {
   height: 400px;
 }
 
+#dist-chart-wrapper {
+  grid-area: 2 / 1 / 3 / 2;
+  height: 300px;
+}
+
+#avg-chart-wrapper {
+  grid-area: 2 / 2 / 3 / 3;
+  height: 300px;
+}
+
 #table-wrapper {
-  grid-area: 2 / 1 / 3 / 3;
+  grid-area: 3 / 1 / 4 / 3;
 }
 
 #chart-wrapper canvas {
+  width: 100%;
+  height: 100%;
+}
+
+#dist-chart-wrapper canvas,
+#avg-chart-wrapper canvas {
   width: 100%;
   height: 100%;
 }
