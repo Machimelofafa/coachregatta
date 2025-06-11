@@ -259,3 +259,24 @@ export function displaySectorAnalysis(stats: Record<number, { maxSpeed: number; 
   container.innerHTML=html;
 }
 
+export function createUnifiedTable(container: HTMLElement, tableData: any[]){
+  if(!container) return;
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  thead.innerHTML = '<tr><th>Overall Rank</th><th>Boat</th><th>Corrected Time</th><th>Top Speed</th><th>Total Avg Speed</th><th>Avg Speed Per Sector</th></tr>';
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  (tableData || []).forEach(row => {
+    const tr = document.createElement('tr');
+    tr.dataset.boat = row.boat;
+    const avgSector = Array.isArray(row.avgSectorSpeeds) ? row.avgSectorSpeeds.map((n:number)=>n.toFixed(2)).join(', ') : '';
+    tr.innerHTML = `<td>${row.rank ?? ''}</td><td>${row.boat}</td><td>${row.corrected ?? ''}</td><td>${row.topSpeed?.toFixed ? row.topSpeed.toFixed(2) : row.topSpeed}</td><td>${row.totalAvgSpeed?.toFixed ? row.totalAvgSpeed.toFixed(2) : row.totalAvgSpeed}</td><td>${avgSector}</td>`;
+    tr.addEventListener('mouseover', ()=>{ highlightSeries(row.boat); });
+    tr.addEventListener('mouseout', ()=>{ highlightSeries(null); });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  container.innerHTML = '';
+  container.appendChild(table);
+}
+
