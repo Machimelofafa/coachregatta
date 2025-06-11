@@ -30,8 +30,9 @@ function highlightRow(name: string | null) {
 
 export function highlightSeries(name: string | null) {
   if (!chart) return;
+  const baseWidth = chart.data.datasets.length > 5 ? 1 : 2;
   chart.data.datasets.forEach((ds: any) => {
-    ds.borderWidth = name && ds.label === name ? 4 : 2;
+    ds.borderWidth = name && ds.label === name ? 4 : baseWidth;
   });
   chart.update('none');
 }
@@ -58,12 +59,13 @@ export function renderChart(series: Series[], selectedNames: string[] = [], sect
     const set = new Set(selectedNames);
     series = series.filter(s => set.has(s.name));
   }
+  const lineWidth = series.length > 5 ? 1 : 2;
   const datasets = series.map((s, i) => ({
     label: s.name,
     data: s.data,
     borderColor: getColor(i),
     backgroundColor: getColor(i),
-    borderWidth: 2,
+    borderWidth: lineWidth,
     pointRadius: 0,
     pointHoverRadius: 4,
     spanGaps: true,
