@@ -1,7 +1,7 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings, fetchLeaderboard } from './raceLoader';
 import { initChart, renderChart, Series, computeSectorTimes } from './chart';
-import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats } from './ui';
-import { computeSeries, calculateBoatStatistics } from './speedUtils';
+import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats, createUnifiedTable } from './ui';
+import { computeSeries, calculateBoatStatistics, averageSpeedsBySector } from './speedUtils';
 import { getColor } from './palette';
 import type { RaceSetup, BoatStats, Moment, CourseNode } from './types';
 import Choices from 'choices.js';
@@ -21,6 +21,7 @@ const distInput   = document.getElementById('distInput') as HTMLInputElement;
 const percentileInput = document.getElementById('percentileInput') as HTMLInputElement;
 const boatStatus  = document.getElementById('boatStatus') as HTMLElement;
 const classStatus = document.getElementById('classStatus') as HTMLElement;
+const tableWrapper = document.getElementById('table-wrapper') as HTMLElement;
 const map = L.map('map-container');
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap'
@@ -87,9 +88,10 @@ let currentRace = '';
 let raceSetup: RaceSetup | null = null;
 let boatStats: Record<number, BoatStats> = {};
 let courseNodes: CourseNode[] = [];
+let positionsByBoat: Record<number, Moment[]> = {};
 
 initChart({ ctx, chartTitleEl: chartTitle });
-initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: {}, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle, sectorToggleEl: sectorToggle }, async (sel: any) => {
+initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: positionsByBoat, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle, sectorToggleEl: sectorToggle }, async (sel: any) => {
   if(sel.comparison !== undefined){
     setComparisonMode(sel.comparison);
     await updateChart();
@@ -176,12 +178,33 @@ async function loadRace(raceId:string){
   refreshDropdowns();
   const ids = raceSetup.teams.map(t => t.id);
   const positions = await fetchPositions(raceId, ids);
+  Object.keys(positionsByBoat).forEach(k=>delete (positionsByBoat as any)[k]);
+  Object.assign(positionsByBoat, positions);
   boatStats = {};
   ids.forEach(id => {
     const track = positions[id];
     if(track) boatStats[id] = calculateBoatStatistics(track, settings);
   });
   displaySectorAnalysis(boatStats);
+
+  const unifiedTableRows: any[] = [];
+  leaderboard.forEach(entry => {
+    const id = entry.id;
+    const name = getBoatNames()[id] || `Boat ${id}`;
+    const track = positions[id];
+    const stats = boatStats[id];
+    const sectorSpeeds = track ? averageSpeedsBySector(track, courseNodes) : [];
+    unifiedTableRows.push({
+      rank: entry.rank,
+      boat: name,
+      corrected: entry.corrected,
+      topSpeed: stats?.maxSpeed ?? 0,
+      totalAvgSpeed: stats?.avgSpeed ?? 0,
+      avgSectorSpeeds: sectorSpeeds
+    });
+  });
+  createUnifiedTable(tableWrapper, unifiedTableRows);
+
   drawTracks({}, []);
 }
 
