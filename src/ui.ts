@@ -281,3 +281,13 @@ export function createUnifiedTable(container: HTMLElement, tableData: any[]){
   container.appendChild(table);
 }
 
+window.addEventListener('DOMContentLoaded', () => {
+  const toggleBtn = document.getElementById('filter-toggle-button');
+  const panel = document.getElementById('filter-panel');
+  if(toggleBtn && panel){
+    toggleBtn.addEventListener('click', () => {
+      panel.classList.toggle('is-open');
+    });
+  }
+});
+

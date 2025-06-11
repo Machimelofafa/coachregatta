@@ -62,11 +62,19 @@ input[type='number']:focus {
 }
 
 #controls-container {
+  position: relative;
+  z-index: 10;
+}
+
+#filter-panel {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  position: relative;
-  z-index: 10;
+}
+
+#filter-toggle-button {
+  display: none;
+  margin-bottom: 0.5rem;
 }
 
 .lb-highlight {
@@ -175,5 +183,27 @@ tr:hover {
   #dist-chart-wrapper,
   #avg-chart-wrapper {
     margin-bottom: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  #filter-toggle-button {
+    display: block;
+  }
+
+  #filter-panel {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+  }
+
+  #filter-panel.is-open {
+    display: flex;
   }
 }
