@@ -6,7 +6,7 @@ import { getColor } from './palette';
 import type { RaceSetup, BoatStats, Moment, CourseNode } from './types';
 import Choices from 'choices.js';
 import 'choices.js/public/assets/styles/choices.min.css';
-import L from 'leaflet';
+import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const boatSelect  = document.getElementById('boatSelect') as HTMLSelectElement;
@@ -89,6 +89,7 @@ let raceSetup: RaceSetup | null = null;
 let boatStats: Record<number, BoatStats> = {};
 let courseNodes: CourseNode[] = [];
 let positionsByBoat: Record<number, Moment[]> = {};
+let allUnifiedTableRows: any[] = [];
 
 initChart({ ctx, chartTitleEl: chartTitle });
 initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: positionsByBoat, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle, sectorToggleEl: sectorToggle }, async (sel: any) => {
@@ -100,8 +101,14 @@ initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsBy
   if(sel.className){
     settings.className = sel.className;
     saveSettings();
-    const leaderboard = await fetchLeaderboard(currentRace);
-    if(raceSetup) updateUiWithRace(raceSetup, leaderboard);
+    const rows = (() => {
+      if(!sel.className || sel.className.toLowerCase() === 'all') return allUnifiedTableRows;
+      const info = getClassInfo()[sel.className];
+      if(!info) return allUnifiedTableRows;
+      const names = new Set(info.boats.map(id => getBoatNames()[id] || `Boat ${id}`));
+      return allUnifiedTableRows.filter(r => names.has(r.boat));
+    })();
+    createUnifiedTable(tableWrapper, rows);
   }
   await handleSelectionChange(sel);
 });
@@ -203,7 +210,8 @@ async function loadRace(raceId:string){
       avgSectorSpeeds: sectorSpeeds
     });
   });
-  createUnifiedTable(tableWrapper, unifiedTableRows);
+  allUnifiedTableRows = unifiedTableRows;
+  createUnifiedTable(tableWrapper, allUnifiedTableRows);
 
   drawTracks({}, []);
 }
