@@ -85,6 +85,10 @@ input[type='number']:focus {
   background-color: #ffef99;
 }
 
+.highlighted {
+  background-color: #ffeacc;
+}
+
 table {
   border-collapse: collapse;
   width: 100%;

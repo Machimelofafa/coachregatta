@@ -1,6 +1,7 @@
 
 import type { LeaderboardEntry, Moment, CourseNode, SectorStat, RaceSetup } from './types';
 import { highlightSeries } from './chart';
+import { setHighlightedBoatId } from './main';
 
 let leaderboardData: LeaderboardEntry[] = [];
 let classInfo: Record<string, { name: string; id: number; boats: number[] }> = {};
@@ -169,12 +170,24 @@ export function renderLeaderboard(classKey:string|null=null, boatId:number|null=
   data.forEach(d=>{
     const name=boatNames[d.id] || `Boat ${d.id}`;
     const highlight=d.id===boatId ? ' class="selected"' : '';
-    html+=`<tr data-boat="${name}"${highlight}><td>${d.rank ?? ''}</td><td>${name}</td><td>${d.status}</td><td>${d.corrected || ''}</td></tr>`;
+    html+=`<tr data-boat="${name}" data-boat-id="${d.id}"${highlight}><td>${d.rank ?? ''}</td><td>${name}</td><td>${d.status}</td><td>${d.corrected || ''}</td></tr>`;
   });
   html+='</tbody></table>';
   container.innerHTML=html;
 
-  container.querySelectorAll('tr[data-boat]').forEach(tr=>{
+  const table = container.querySelector('table');
+  if(!table) return;
+
+  table.addEventListener('click', (e) => {
+    const row = (e.target as HTMLElement).closest('tr[data-boat-id]');
+    if(!row) return;
+    const id = Number(row.getAttribute('data-boat-id'));
+    container.querySelectorAll('tr.highlighted').forEach(r=>r.classList.remove('highlighted'));
+    row.classList.add('highlighted');
+    setHighlightedBoatId(id);
+  });
+
+  table.querySelectorAll('tr[data-boat]').forEach(tr=>{
     const boat=(tr as HTMLElement).dataset.boat as string;
     tr.addEventListener('mouseover',()=>{ highlightSeries(boat); });
     tr.addEventListener('mouseout',()=>{ highlightSeries(null); });

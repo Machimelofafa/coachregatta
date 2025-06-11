@@ -1,7 +1,7 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings, fetchLeaderboard } from './raceLoader';
 import { initChart, renderChart, Series, computeSectorTimes,
   initSectorCharts, renderDistancePerSector, renderSpeedPerSector,
-  clearSectorCharts } from './chart';
+  clearSectorCharts, highlightChartLine } from './chart';
 import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats, createUnifiedTable } from './ui';
 import { computeSeries, calculateBoatStatistics, averageSpeedsBySector, distancesBySector, applyMovingAverage } from './speedUtils';
 import { getColor } from './palette';
@@ -32,8 +32,26 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap'
 }).addTo(map);
 map.setView([0, 0], 2);
-let polylines: any[] = [];
+let polylines: { id: number; poly: L.Polyline }[] = [];
 let sectorPolygons: any[] = [];
+
+export let highlightedBoatId: number | null = null;
+
+export function setHighlightedBoatId(id: number | null){
+  highlightedBoatId = id;
+  highlightMapTrack(id);
+  highlightChartLine(id);
+}
+
+export function highlightMapTrack(boatId: number | null){
+  polylines.forEach(p => p.poly.setStyle({ weight: 3, opacity: 0.7 }));
+  if(boatId===null) return;
+  const item = polylines.find(p=>p.id===boatId);
+  if(item){
+    item.poly.setStyle({ weight: 6, opacity: 1 });
+    item.poly.bringToFront();
+  }
+}
 
 let boatChoices: Choices | null = null;
 let classChoices: Choices | null = null;
@@ -44,21 +62,26 @@ function drawTracks(pos: Record<number, Moment[]>, ids: number[]) {
     const set = new Set(getComparisonBoats());
     ids = ids.filter(id => set.has(getBoatNames()[id] || String(id)));
   }
-  polylines.forEach(p => p.remove());
+  polylines.forEach(p => p.poly.remove());
   polylines = [];
   const group: any[] = [];
   ids.forEach((id, idx) => {
     const track = pos[id];
     if(!track || !track.length) return;
     const coords = track.map(m => [m.lat, m.lon] as [number, number]);
-    const poly = L.polyline(coords, { color: getColor(idx) }).addTo(map);
-    polylines.push(poly);
+    const poly = L.polyline(coords, {
+      color: getColor(idx),
+      weight: 3,
+      opacity: 0.7
+    }).addTo(map);
+    polylines.push({ id, poly });
     group.push(poly);
   });
   if(group.length){
     const fg = L.featureGroup(group);
     map.fitBounds(fg.getBounds());
   }
+  highlightMapTrack(highlightedBoatId);
 }
 
 function drawSectorPolygons(){

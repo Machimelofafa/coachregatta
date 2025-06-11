@@ -3,7 +3,7 @@ import { computeSeries, DEFAULT_SETTINGS } from './speedUtils';
 import { getColor } from './palette';
 import type { Moment, CourseNode } from './types';
 import { haversineNm } from './parsePositions';
-import { isComparisonMode, getComparisonBoats } from './ui';
+import { isComparisonMode, getComparisonBoats, getBoatNames } from './ui';
 import Chart from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
@@ -34,6 +34,21 @@ export function highlightSeries(name: string | null) {
   chart.data.datasets.forEach((ds: any) => {
     ds.borderWidth = name && ds.label === name ? 4 : baseWidth;
   });
+  chart.update('none');
+}
+
+export function highlightChartLine(boatId: number | null){
+  if(!chart) return;
+  const baseWidth = chart.data.datasets.length > 5 ? 1 : 2;
+  chart.data.datasets.forEach((ds: any) => {
+    ds.borderWidth = baseWidth;
+  });
+  if(boatId!==null){
+    const name = getBoatNames()[boatId] || String(boatId);
+    chart.data.datasets.forEach((ds: any) => {
+      if(ds.label === name){ ds.borderWidth = 4; }
+    });
+  }
   chart.update('none');
 }
 
