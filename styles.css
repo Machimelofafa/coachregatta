@@ -147,6 +147,10 @@ tr:hover {
   z-index: 1000;
 }
 
+.choices.is-open {
+  z-index: 20;
+}
+
 .choices__list--dropdown {
   z-index: 1001;
 }
@@ -166,4 +170,10 @@ tr:hover {
   #avg-chart-wrapper { order: 3; }
   #dist-chart-wrapper { order: 4; }
   #table-wrapper { order: 5; }
+
+  #chart-wrapper,
+  #dist-chart-wrapper,
+  #avg-chart-wrapper {
+    margin-bottom: 2rem;
+  }
 }
