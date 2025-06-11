@@ -73,6 +73,19 @@ function smooth(arr: number[], len: number): number[] {
   return out;
 }
 
+export function applyMovingAverage(seriesData: {x:number, y:number}[], windowSize: number){
+  if(windowSize <= 1) return seriesData.slice();
+  const out: {x:number, y:number}[] = [];
+  let sum = 0;
+  for(let i=0;i<seriesData.length;i++){
+    sum += seriesData[i].y;
+    if(i >= windowSize) sum -= seriesData[i-windowSize].y;
+    const denom = i < windowSize ? i+1 : windowSize;
+    out.push({ x: seriesData[i].x, y: +(sum/denom).toFixed(2) });
+  }
+  return out;
+}
+
 export function calculateBoatStatistics(track: Moment[], cfg: Partial<typeof DEFAULT_SETTINGS> = {}): { maxSpeed: number; avgSpeed: number } {
   const settings = { ...DEFAULT_SETTINGS, ...cfg, smoothLen: 1 };
   const { sogKn } = computeSeries(track, true, settings);

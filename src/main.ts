@@ -1,7 +1,7 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings, fetchLeaderboard } from './raceLoader';
 import { initChart, renderChart, Series, computeSectorTimes } from './chart';
 import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats, createUnifiedTable } from './ui';
-import { computeSeries, calculateBoatStatistics, averageSpeedsBySector } from './speedUtils';
+import { computeSeries, calculateBoatStatistics, averageSpeedsBySector, applyMovingAverage } from './speedUtils';
 import { getColor } from './palette';
 import type { RaceSetup, BoatStats, Moment, CourseNode } from './types';
 import Choices from 'choices.js';
@@ -17,6 +17,7 @@ const ctx         = (document.getElementById('speedChart') as HTMLCanvasElement)
 const rawToggle   = document.getElementById('rawToggle') as HTMLInputElement;
 const compareToggle = document.getElementById('compareToggle') as HTMLInputElement;
 const sectorToggle = document.getElementById('sectorToggle') as HTMLInputElement;
+const smoothingSelect = document.getElementById('smoothing-selector') as HTMLSelectElement;
 const distInput   = document.getElementById('distInput') as HTMLInputElement;
 const percentileInput = document.getElementById('percentileInput') as HTMLInputElement;
 const boatStatus  = document.getElementById('boatStatus') as HTMLElement;
@@ -95,7 +96,7 @@ initChart({ ctx, chartTitleEl: chartTitle });
 initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: positionsByBoat, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle, sectorToggleEl: sectorToggle }, async (sel: any) => {
   if(sel.comparison !== undefined){
     setComparisonMode(sel.comparison);
-    await updateChart();
+    await updateChartWithSelections();
     return;
   }
   if(sel.className){
@@ -110,7 +111,7 @@ initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsBy
     })();
     createUnifiedTable(tableWrapper, rows);
   }
-  await handleSelectionChange(sel);
+  await updateChartWithSelections();
 });
 disableSelectors();
 compareToggle.addEventListener('change', () => {
@@ -126,36 +127,40 @@ compareToggle.addEventListener('change', () => {
     setComparisonBoats([]);
   }
   refreshDropdowns();
-  updateChart();
+  updateChartWithSelections();
 });
 sectorToggle.addEventListener('change', drawSectorPolygons);
+smoothingSelect.addEventListener('change', updateChartWithSelections);
 
-async function handleSelectionChange(sel:{ boat?: string; className?: string }){
+async function updateChartWithSelections(){
   if(!currentRace || !raceSetup) return;
   let ids: number[] = [];
   let selectedNames: string[] = [];
-  if(sel.boat){
+  if(boatSelect.value){
     if(isComparisonMode()){
       selectedNames = getComparisonBoats();
-      ids = selectedNames.map(n => getBoatId(n)).filter((n):n is number => !!n);
+      ids = selectedNames.map(n=>getBoatId(n)).filter((n):n is number => !!n);
     } else {
-      const id = getBoatId(sel.boat);
-      if(id){ ids = [id]; selectedNames = [sel.boat]; }
+      const id = getBoatId(boatSelect.value);
+      if(id){ ids=[id]; selectedNames=[boatSelect.value]; }
     }
-  }else if(sel.className){
-    const info = getClassInfo()[sel.className];
+  } else if(classSelect.value){
+    const info = getClassInfo()[classSelect.value];
     if(info){
       ids = info.boats.slice();
-      selectedNames = ids.map(id => getBoatNames()[id] || String(id));
+      selectedNames = ids.map(id=>getBoatNames()[id] || String(id));
     }
   }
   if(!ids.length) return;
   const positions = await fetchPositions(currentRace, ids);
+  const windowSize = Number(smoothingSelect.value||'0');
   const series: Series[] = ids.map(id => {
     const track = positions[id];
     if(!track) return null as any;
     const { sogKn, labels } = computeSeries(track, !rawToggle.checked, settings);
-    return { name: getBoatNames()[id] || String(id), data: labels.map((t,j)=>({ x:t, y:sogKn[j] })) };
+    let data = labels.map((t,j)=>({ x:t, y:sogKn[j] }));
+    if(windowSize > 1) data = applyMovingAverage(data, windowSize);
+    return { name: getBoatNames()[id] || String(id), data };
   }).filter(Boolean);
   let sectorInfo = { times: [] as number[], labels: [] as string[], mids: [] as number[] };
   if(courseNodes.length && positions[ids[0]]){
@@ -164,15 +169,6 @@ async function handleSelectionChange(sel:{ boat?: string; className?: string }){
   renderChart(series, selectedNames, showSectors() ? sectorInfo : undefined);
   drawTracks(positions, ids);
 }
-
-async function updateChart(){
-  if(boatSelect.value){
-    await handleSelectionChange({ boat: boatSelect.value });
-  } else if(classSelect.value){
-    await handleSelectionChange({ className: classSelect.value });
-  }
-}
-
 async function loadRace(raceId:string){
   if(!raceId) return;
   currentRace = raceId;
