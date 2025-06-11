@@ -77,6 +77,7 @@ export function renderChart(series: Series[], selectedNames: string[] = [], sect
     data: { datasets } as any,
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       scales: {
         x: { type: 'time', time: { unit: 'hour' }, grid: { color: 'rgba(0,0,0,0.06)', borderDash:[4,2] } },
         y: { title:{ display:true, text:'knots' }, grid:{ color:'rgba(0,0,0,0.06)', borderDash:[4,2] } }
