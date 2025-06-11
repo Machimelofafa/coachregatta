@@ -7,6 +7,7 @@ import { isComparisonMode, getComparisonBoats, getBoatNames } from './ui';
 import Chart from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
+import * as L from 'leaflet';
 
 Chart.register(zoomPlugin);
 
@@ -234,5 +235,39 @@ export function renderDistancePerSector(labels:string[], series:{name:string; da
 
 export function renderSpeedPerSector(labels:string[], series:{name:string; data:number[]}[]){
   avgChart = renderSimpleChart(avgCtx, avgChart, labels, series, 'kn');
+}
+
+// --- Replay utilities ---
+let mapRef: L.Map | null = null;
+let replayData: Record<number, Moment[]> = {};
+let boatMarkers: L.Layer[] = [];
+
+export function initMapReplay(map: L.Map){
+  mapRef = map;
+}
+
+export function setReplayData(data: Record<number, Moment[]>) {
+  replayData = data;
+}
+
+function getPositionAtTime(track: Moment[], t: number): Moment | null {
+  if(!track.length) return null;
+  for(const m of track){
+    if(m.at >= t) return m;
+  }
+  return track[track.length-1];
+}
+
+export function updateBoatPositionsAtTime(t: number){
+  if(!mapRef) return;
+  boatMarkers.forEach(m => m.remove());
+  boatMarkers = [];
+  Object.values(replayData).forEach(track => {
+    const pos = getPositionAtTime(track, t);
+    if(pos){
+      const marker = L.circleMarker([pos.lat, pos.lon], { radius: 4, color: '#333' }).addTo(mapRef!);
+      boatMarkers.push(marker);
+    }
+  });
 }
 
