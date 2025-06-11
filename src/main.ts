@@ -1,7 +1,7 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings, fetchLeaderboard } from './raceLoader';
 import { initChart, renderChart, Series, computeSectorTimes } from './chart';
-import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, displaySectorAnalysis, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats, createUnifiedTable } from './ui';
-import { computeSeries, calculateBoatStatistics, averageSpeedsBySector, applyMovingAverage } from './speedUtils';
+import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats, createUnifiedTable } from './ui';
+import { computeSeries, calculateBoatStatistics, averageSpeedsBySector, distancesBySector, applyMovingAverage } from './speedUtils';
 import { getColor } from './palette';
 import type { RaceSetup, BoatStats, Moment, CourseNode } from './types';
 import Choices from 'choices.js';
@@ -188,7 +188,6 @@ async function loadRace(raceId:string){
     const track = positions[id];
     if(track) boatStats[id] = calculateBoatStatistics(track, settings);
   });
-  displaySectorAnalysis(boatStats);
 
   const unifiedTableRows: any[] = [];
   leaderboard.forEach(entry => {
@@ -197,12 +196,14 @@ async function loadRace(raceId:string){
     const track = positions[id];
     const stats = boatStats[id];
     const sectorSpeeds = track ? averageSpeedsBySector(track, courseNodes) : [];
+    const sectorDistances = track ? distancesBySector(track, courseNodes) : [];
     unifiedTableRows.push({
       rank: entry.rank,
       boat: name,
       corrected: entry.corrected,
       topSpeed: stats?.maxSpeed ?? 0,
       totalAvgSpeed: stats?.avgSpeed ?? 0,
+      sectorDistances,
       avgSectorSpeeds: sectorSpeeds
     });
   });

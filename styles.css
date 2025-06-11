@@ -117,3 +117,11 @@ tr:hover {
   width: 100%;
   height: 100%;
 }
+
+.choices {
+  z-index: 1000;
+}
+
+.choices__list--dropdown {
+  z-index: 1001;
+}

@@ -128,3 +128,29 @@ export function averageSpeedsBySector(moments: Moment[], nodes: CourseNode[]): n
   }
   return speeds;
 }
+
+export function distancesBySector(moments: Moment[], nodes: CourseNode[]): number[] {
+  const moms = moments.slice().sort((a,b)=>a.at-b.at);
+  if(!moms.length || !nodes.length) return [];
+  const dists: number[] = [];
+  for(let i=0;i<nodes.length-1;i++){
+    const start = nodes[i];
+    const end = nodes[i+1];
+    let startIdx: number | null = null, endIdx: number | null = null;
+    let startDist = Infinity, endDist = Infinity;
+    moms.forEach((m,idx)=>{
+      const ds = haversineNm(start.lat,start.lon,m.lat,m.lon);
+      if(ds < startDist){ startDist = ds; startIdx = idx; }
+      const de = haversineNm(end.lat,end.lon,m.lat,m.lon);
+      if(de < endDist){ endDist = de; endIdx = idx; }
+    });
+    if(startIdx===null || endIdx===null || endIdx<=startIdx) continue;
+    let dist = 0;
+    for(let j=startIdx+1;j<=endIdx;j++){
+      const A = moms[j-1], B = moms[j];
+      dist += haversineNm(A.lat,A.lon,B.lat,B.lon);
+    }
+    dists.push(dist);
+  }
+  return dists;
+}
