@@ -1,8 +1,7 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings, fetchLeaderboard } from './raceLoader';
 import { initChart, renderChart, Series, computeSectorTimes,
   initSectorCharts, renderDistancePerSector, renderSpeedPerSector,
-  clearSectorCharts, highlightChartLine,
-  initMapReplay, setReplayData, updateBoatPositionsAtTime } from './chart';
+  clearSectorCharts, highlightChartLine } from './chart';
 import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats, createUnifiedTable } from './ui';
 import { computeSeries, calculateBoatStatistics, averageSpeedsBySector, distancesBySector, applyMovingAverage } from './speedUtils';
 import { getColor } from './palette';
@@ -33,12 +32,6 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap'
 }).addTo(map);
 map.setView([0, 0], 2);
-initMapReplay(map);
-let isPlaying = false;
-let replaySpeed = 1;
-let currentTime = 0;
-let raceData: Record<number, Moment[]> = {};
-let lastFrame = 0;
 let polylines: { id: number; poly: L.Polyline }[] = [];
 let sectorPolygons: any[] = [];
 
@@ -118,24 +111,6 @@ function refreshDropdowns(){
   boatChoices = new Choices(boatSelect, { searchEnabled: true, shouldSort: false });
   classChoices = new Choices(classSelect, { searchEnabled: true, shouldSort: false });
 }
-
-export function animationLoop(ts: number){
-  requestAnimationFrame(animationLoop);
-  if(!isPlaying){ lastFrame = ts; return; }
-  if(!lastFrame) lastFrame = ts;
-  const dt = (ts - lastFrame) / 1000;
-  lastFrame = ts;
-  currentTime += dt * replaySpeed;
-  updateBoatPositionsAtTime(currentTime);
-  const scrubber = document.getElementById('timeline-scrubber') as HTMLInputElement;
-  if(scrubber) scrubber.value = String(currentTime);
-}
-
-export function play(){ isPlaying = true; }
-export function pause(){ isPlaying = false; }
-export function togglePlayPause(){ isPlaying ? pause() : play(); }
-export function setSpeed(speed: number){ replaySpeed = speed; }
-export function scrubToTime(t: number){ currentTime = Number(t); updateBoatPositionsAtTime(currentTime); }
 
 let currentRace = '';
 let raceSetup: RaceSetup | null = null;
@@ -258,19 +233,6 @@ async function loadRace(raceId:string){
   refreshDropdowns();
   const ids = raceSetup.teams.map(t => t.id);
   const positions = await fetchPositions(raceId, ids);
-  raceData = positions;
-  setReplayData(raceData);
-  const times:number[] = [];
-  Object.values(positions).forEach(track=>track.forEach(m=>times.push(m.at)));
-  times.sort((a,b)=>a-b);
-  const scrubber=document.getElementById('timeline-scrubber') as HTMLInputElement;
-  if(times.length && scrubber){
-    scrubber.min=String(times[0]);
-    scrubber.max=String(times[times.length-1]);
-    currentTime=times[0];
-    scrubber.value=String(currentTime);
-    updateBoatPositionsAtTime(currentTime);
-  }
   Object.keys(positionsByBoat).forEach(k=>delete (positionsByBoat as any)[k]);
   Object.assign(positionsByBoat, positions);
   boatStats = {};
@@ -330,4 +292,3 @@ async function init(){
 }
 
 window.addEventListener('DOMContentLoaded', init);
-requestAnimationFrame(animationLoop);
