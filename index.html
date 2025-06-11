@@ -51,6 +51,15 @@
     <input type="checkbox" id="sectorToggle" aria-label="Toggle sector markers" checked>
     Show Sector Markers
   </label>
+  <label for="smoothing-selector" style="margin-left:2rem">Smoothing:</label>
+  <select id="smoothing-selector" aria-label="Smoothing interval">
+    <option value="0">None</option>
+    <option value="5">5 min</option>
+    <option value="10">10 min</option>
+    <option value="30">30 min</option>
+    <option value="60">1h</option>
+    <option value="120">2h</option>
+  </select>
 <details id="settingsDrawer" style="margin-top:1rem;" aria-label="Settings options">
   <summary>Settings</summary>
   <label>Glitch distance (nm):
