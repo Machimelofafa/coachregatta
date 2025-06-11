@@ -167,3 +167,42 @@ const sectorPlugin = {
   }
 };
 
+let distCtx: CanvasRenderingContext2D;
+let avgCtx: CanvasRenderingContext2D;
+let distChart: any = null;
+let avgChart: any = null;
+
+export function initSectorCharts(opts:{distCtx:CanvasRenderingContext2D; avgCtx:CanvasRenderingContext2D;}){
+  distCtx = opts.distCtx;
+  avgCtx = opts.avgCtx;
+}
+
+export function clearSectorCharts(){
+  if(distChart){ distChart.destroy(); distChart=null; }
+  if(avgChart){ avgChart.destroy(); avgChart=null; }
+}
+
+function renderSimpleChart(ctx:CanvasRenderingContext2D, chartRef:any, labels:string[],
+  dataSeries:{name:string; data:number[]}[], yLabel:string){
+  if(chartRef){ chartRef.destroy(); }
+  const lineWidth = dataSeries.length > 5 ? 1 : 2;
+  const datasets = dataSeries.map((s,i)=>({
+    label:s.name,
+    data:s.data,
+    borderColor:getColor(i),
+    backgroundColor:getColor(i),
+    borderWidth: lineWidth,
+    pointRadius:0,
+    tension:0
+  }));
+  return new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}},y:{title:{display:true,text:yLabel},grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}}}} as any});
+}
+
+export function renderDistancePerSector(labels:string[], series:{name:string; data:number[]}[]){
+  distChart = renderSimpleChart(distCtx, distChart, labels, series, 'nm');
+}
+
+export function renderSpeedPerSector(labels:string[], series:{name:string; data:number[]}[]){
+  avgChart = renderSimpleChart(avgCtx, avgChart, labels, series, 'kn');
+}
+

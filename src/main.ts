@@ -1,5 +1,7 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings, fetchLeaderboard } from './raceLoader';
-import { initChart, renderChart, Series, computeSectorTimes } from './chart';
+import { initChart, renderChart, Series, computeSectorTimes,
+  initSectorCharts, renderDistancePerSector, renderSpeedPerSector,
+  clearSectorCharts } from './chart';
 import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats, createUnifiedTable } from './ui';
 import { computeSeries, calculateBoatStatistics, averageSpeedsBySector, distancesBySector, applyMovingAverage } from './speedUtils';
 import { getColor } from './palette';
@@ -14,6 +16,8 @@ const classSelect = document.getElementById('classSelect') as HTMLSelectElement;
 const raceSelect  = document.getElementById('raceSelect') as HTMLSelectElement;
 const chartTitle  = document.getElementById('chartTitle') as HTMLElement;
 const ctx         = (document.getElementById('speedChart') as HTMLCanvasElement).getContext('2d')!;
+const distCtx     = (document.getElementById('distSectorChart') as HTMLCanvasElement).getContext('2d')!;
+const avgCtx      = (document.getElementById('avgSectorChart') as HTMLCanvasElement).getContext('2d')!;
 const rawToggle   = document.getElementById('rawToggle') as HTMLInputElement;
 const compareToggle = document.getElementById('compareToggle') as HTMLInputElement;
 const sectorToggle = document.getElementById('sectorToggle') as HTMLInputElement;
@@ -28,8 +32,8 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap'
 }).addTo(map);
 map.setView([0, 0], 2);
-let polylines: L.Polyline[] = [];
-let sectorPolygons: L.Polygon[] = [];
+let polylines: any[] = [];
+let sectorPolygons: any[] = [];
 
 let boatChoices: Choices | null = null;
 let classChoices: Choices | null = null;
@@ -42,7 +46,7 @@ function drawTracks(pos: Record<number, Moment[]>, ids: number[]) {
   }
   polylines.forEach(p => p.remove());
   polylines = [];
-  const group: L.Polyline[] = [];
+  const group: any[] = [];
   ids.forEach((id, idx) => {
     const track = pos[id];
     if(!track || !track.length) return;
@@ -93,6 +97,7 @@ let positionsByBoat: Record<number, Moment[]> = {};
 let allUnifiedTableRows: any[] = [];
 
 initChart({ ctx, chartTitleEl: chartTitle });
+initSectorCharts({ distCtx, avgCtx });
 initUI({ leaderboardDataRef: [], classInfoRef: {}, boatNamesRef: {}, positionsByBoatRef: positionsByBoat, chartRef: null, chartTitleEl: chartTitle, boatSelectEl: boatSelect, classSelectEl: classSelect, rawToggleEl: rawToggle, sectorToggleEl: sectorToggle }, async (sel: any) => {
   if(sel.comparison !== undefined){
     setComparisonMode(sel.comparison);
@@ -151,7 +156,10 @@ async function updateChartWithSelections(){
       selectedNames = ids.map(id=>getBoatNames()[id] || String(id));
     }
   }
-  if(!ids.length) return;
+  if(!ids.length){
+    clearSectorCharts();
+    return;
+  }
   const positions = await fetchPositions(currentRace, ids);
   const windowSize = Number(smoothingSelect.value||'0');
   const series: Series[] = ids.map(id => {
@@ -159,7 +167,7 @@ async function updateChartWithSelections(){
     if(!track) return null as any;
     const { sogKn, labels } = computeSeries(track, !rawToggle.checked, settings);
     let data = labels.map((t,j)=>({ x:t, y:sogKn[j] }));
-    if(windowSize > 1) data = applyMovingAverage(data, windowSize);
+    if(windowSize > 1) data = applyMovingAverage(data as any, windowSize) as any;
     return { name: getBoatNames()[id] || String(id), data };
   }).filter(Boolean);
   let sectorInfo = { times: [] as number[], labels: [] as string[], mids: [] as number[] };
@@ -168,10 +176,31 @@ async function updateChartWithSelections(){
   }
   renderChart(series, selectedNames, showSectors() ? sectorInfo : undefined);
   drawTracks(positions, ids);
+
+  const labels = courseNodes.slice(0,-1).map((n,idx)=>{
+    const start = n.name || (idx===0 ? 'Start' : `WP${idx+1}`);
+    const end = courseNodes[idx+1].name || (idx+1===courseNodes.length-1 ? 'Finish' : `WP${idx+2}`);
+    return `${start} – ${end}`;
+  });
+  const distSeries = ids.map(id=>({
+    name: getBoatNames()[id] || String(id),
+    data: distancesBySector(positions[id], courseNodes)
+  }));
+  const speedSeries = ids.map(id=>({
+    name: getBoatNames()[id] || String(id),
+    data: averageSpeedsBySector(positions[id], courseNodes)
+  }));
+  if(labels.length){
+    renderDistancePerSector(labels, distSeries);
+    renderSpeedPerSector(labels, speedSeries);
+  } else {
+    clearSectorCharts();
+  }
 }
 async function loadRace(raceId:string){
   if(!raceId) return;
   currentRace = raceId;
+  clearSectorCharts();
   raceSetup = await fetchRaceSetup(raceId);
   courseNodes = raceSetup.course?.nodes || [];
   (window as any).courseNodes = courseNodes;
