@@ -89,7 +89,31 @@ tr:hover {
 
 #map-container {
   width: 100%;
-  max-width: 900px;
+  height: 100%;
+}
+
+#main-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+#map-wrapper {
+  grid-area: 1 / 1 / 2 / 2;
   height: 400px;
-  margin-top: 1rem;
+}
+
+#chart-wrapper {
+  grid-area: 1 / 2 / 2 / 3;
+  height: 400px;
+}
+
+#table-wrapper {
+  grid-area: 2 / 1 / 3 / 3;
+}
+
+#chart-wrapper canvas {
+  width: 100%;
+  height: 100%;
 }
