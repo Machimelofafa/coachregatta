@@ -192,22 +192,18 @@ tr:hover {
 }
 
 .choices.is-open {
-  z-index: 20;
+  z-index: 1002; /* Increased from 20 to a high value */
 }
 
 .choices__list--dropdown {
   z-index: 1001;
 }
 
-/* Prevent word wrapping of boat and class names in dropdowns */
-#boatSelect + .choices .choices__item,
-#boatSelect + .choices .choices__list--dropdown,
+/* Correctly prevent word wrapping in the dropdown list */
 #boatSelect + .choices .choices__list--dropdown .choices__item,
-#classSelect + .choices .choices__item,
-#classSelect + .choices .choices__list--dropdown,
 #classSelect + .choices .choices__list--dropdown .choices__item {
-  word-break: normal;
-  white-space: nowrap;
+  white-space: nowrap; /* Prevents text from wrapping */
+  word-break: keep-all; /* Alternative for good measure */
 }
 
 /* Ensure boat and class dropdowns have a reasonable width */
