@@ -199,6 +199,14 @@ tr:hover {
   z-index: 1001;
 }
 
+/* Prevent word wrapping of boat and class names in dropdowns */
+#boatSelect + .choices .choices__item,
+#boatSelect + .choices .choices__list--dropdown,
+#classSelect + .choices .choices__item,
+#classSelect + .choices .choices__list--dropdown {
+  word-break: normal;
+}
+
 /* Ensure boat and class dropdowns have a reasonable width */
 #boatSelect + .choices,
 #classSelect + .choices,
