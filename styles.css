@@ -202,9 +202,12 @@ tr:hover {
 /* Prevent word wrapping of boat and class names in dropdowns */
 #boatSelect + .choices .choices__item,
 #boatSelect + .choices .choices__list--dropdown,
+#boatSelect + .choices .choices__list--dropdown .choices__item,
 #classSelect + .choices .choices__item,
-#classSelect + .choices .choices__list--dropdown {
+#classSelect + .choices .choices__list--dropdown,
+#classSelect + .choices .choices__list--dropdown .choices__item {
   word-break: normal;
+  white-space: nowrap;
 }
 
 /* Ensure boat and class dropdowns have a reasonable width */
