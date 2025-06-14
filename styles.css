@@ -199,6 +199,14 @@ tr:hover {
   z-index: 1001;
 }
 
+/* Ensure boat and class dropdowns have a reasonable width */
+#boatSelect + .choices,
+#classSelect + .choices,
+#boatSelect,
+#classSelect {
+  min-width: 12ch;
+}
+
 @media (max-width: 600px) {
   #main-container {
     display: flex;
