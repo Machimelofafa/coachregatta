@@ -59,7 +59,7 @@ button {
     background-color: white;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    z-index: 1000;
+    z-index: var(--z-index-info-pane);
 }
 
 #race-selector,
@@ -95,7 +95,7 @@ input[type='number']:focus {
 
 #controls-container {
   position: relative;
-  z-index: 1500; /* ensure controls stack above Leaflet map */
+  z-index: var(--z-index-controls); /* ensure controls stack above Leaflet map */
 }
 
 #filter-panel {
@@ -254,7 +254,7 @@ tr:hover {
 
 .choices.is-open {
   /* A high z-index ensures it appears on top of all other elements */
-  z-index: 1600;
+  z-index: var(--z-index-dropdown-active);
 }
 
 
