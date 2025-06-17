@@ -95,7 +95,7 @@ input[type='number']:focus {
 
 #controls-container {
   position: relative;
-  z-index: 10;
+  z-index: 1500; /* ensure controls stack above Leaflet map */
 }
 
 #filter-panel {
@@ -254,7 +254,7 @@ tr:hover {
 
 .choices.is-open {
   /* A high z-index ensures it appears on top of all other elements */
-  z-index: 100;
+  z-index: 1600;
 }
 
 
