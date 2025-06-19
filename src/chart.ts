@@ -213,7 +213,7 @@ export function clearSectorCharts(){
 }
 
 function renderSimpleChart(ctx:CanvasRenderingContext2D, chartRef:any, labels:string[],
-  dataSeries:{name:string; data:number[]}[], yLabel:string){
+  dataSeries:{name:string; data:number[]}[], yLabel:string, units:string){
   if(chartRef){ chartRef.destroy(); }
   const lineWidth = dataSeries.length > 5 ? 1 : 2;
   const datasets = dataSeries.map((s,i)=>({
@@ -223,16 +223,23 @@ function renderSimpleChart(ctx:CanvasRenderingContext2D, chartRef:any, labels:st
     backgroundColor:getColor(i),
     borderWidth: lineWidth,
     pointRadius:0,
+    pointHoverRadius:4,
     tension:0
   }));
-  return new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}},y:{title:{display:true,text:yLabel},grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}}}} as any});
+  return new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'nearest',intersect:false},
+    scales:{x:{grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}},y:{title:{display:true,text:yLabel},grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}}},
+    plugins:{tooltip:{mode:'index',intersect:false,callbacks:{beforeBody(tooltipItems:any[]){
+      const lines:string[]=[]; tooltipItems.forEach(item=>{const label=(item.dataset as any)?.label||item.datasetLabel||''; lines.push(`${label}: ${item.formattedValue} ${units}`);});
+      return lines;},label(){return'';}}}}
+  } as any});
 }
 
 export function renderDistancePerSector(labels:string[], series:{name:string; data:number[]}[]){
-  distChart = renderSimpleChart(distCtx, distChart, labels, series, 'nm');
+  distChart = renderSimpleChart(distCtx, distChart, labels, series, 'nm', 'nm');
 }
 
 export function renderSpeedPerSector(labels:string[], series:{name:string; data:number[]}[]){
-  avgChart = renderSimpleChart(avgCtx, avgChart, labels, series, 'kn');
+  avgChart = renderSimpleChart(avgCtx, avgChart, labels, series, 'kn', 'kn');
 }
 
