@@ -5,6 +5,7 @@ import type { Moment, CourseNode } from './types';
 import { haversineNm } from './parsePositions';
 import { isComparisonMode, getComparisonBoats, getBoatNames } from './ui';
 import Chart from 'chart.js/auto';
+import type { TooltipItem } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
 
@@ -115,7 +116,7 @@ export function renderChart(series: Series[], selectedNames: string[] = [], sect
           mode:'index',
           intersect:false,
           callbacks:{
-            beforeBody(tooltipItems:any[]){
+            beforeBody(tooltipItems: TooltipItem<'line'>[]){
               const lines:string[] = [];
               tooltipItems.forEach(item=>{
                 const label = (item.dataset as any)?.label || item.datasetLabel || '';
@@ -229,7 +230,7 @@ function renderSimpleChart(ctx:CanvasRenderingContext2D, chartRef:any, labels:st
   return new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,
     interaction:{mode:'nearest',intersect:false},
     scales:{x:{grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}},y:{title:{display:true,text:yLabel},grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}}},
-    plugins:{tooltip:{mode:'index',intersect:false,callbacks:{beforeBody(tooltipItems:any[]){
+    plugins:{tooltip:{mode:'index',intersect:false,callbacks:{beforeBody(tooltipItems: TooltipItem<'line'>[]){
       const lines:string[]=[]; tooltipItems.forEach(item=>{const label=(item.dataset as any)?.label||item.datasetLabel||''; lines.push(`${label}: ${item.formattedValue} ${units}`);});
       return lines;},label(){return'';}}}}
   } as any});
