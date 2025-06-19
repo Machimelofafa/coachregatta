@@ -193,7 +193,7 @@ tr:hover {
 #classSelect + .choices,
 #boatSelect,
 #classSelect {
-  min-width: 12ch;
+  min-width: 18ch;
 }
 
 @media (max-width: 600px) {
