@@ -116,10 +116,10 @@ export function renderChart(series: Series[], selectedNames: string[] = [], sect
           mode:'index',
           intersect:false,
           callbacks:{
-            beforeBody(tooltipItems: TooltipItem<'line'>[]){
-              const lines:string[] = [];
-              tooltipItems.forEach(item=>{
-                const label = (item.dataset as any)?.label || item.datasetLabel || '';
+            beforeBody(tooltipItems: TooltipItem<'line'>[]) {
+              const lines: string[] = [];
+              tooltipItems.forEach(item => {
+                const label = item.dataset?.label ?? '';
                 lines.push(`${label}: ${item.formattedValue} knots`);
               });
               return lines;
@@ -231,7 +231,11 @@ function renderSimpleChart(ctx:CanvasRenderingContext2D, chartRef:any, labels:st
     interaction:{mode:'nearest',intersect:false},
     scales:{x:{grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}},y:{title:{display:true,text:yLabel},grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}}},
     plugins:{tooltip:{mode:'index',intersect:false,callbacks:{beforeBody(tooltipItems: TooltipItem<'line'>[]){
-      const lines:string[]=[]; tooltipItems.forEach(item=>{const label=(item.dataset as any)?.label||item.datasetLabel||''; lines.push(`${label}: ${item.formattedValue} ${units}`);});
+      const lines:string[]=[];
+      tooltipItems.forEach(item=>{
+        const label=item.dataset?.label ?? '';
+        lines.push(`${label}: ${item.formattedValue} ${units}`);
+      });
       return lines;},label(){return'';}}}}
   } as any});
 }
