@@ -199,6 +199,11 @@ tr:hover {
   min-width: 18ch;
 }
 
+/* Styling for the legend toggle label */
+.legend-toggle-label {
+  margin-left: 2rem;
+}
+
 @media (max-width: 600px) {
   #main-container {
     display: flex;
