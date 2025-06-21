@@ -208,7 +208,7 @@ let legendVisible = false;
 export function setLegendVisibility(v: boolean) {
   legendVisible = v;
   [chart, distChart, avgChart].forEach(c => {
-    if (c) {
+    if (c && typeof (c as any).update === 'function') {
       c.options.plugins.legend.display = legendVisible;
       c.update();
     }
