@@ -205,11 +205,14 @@ let distChart: any = null;
 let avgChart: any = null;
 let legendVisible = false;
 
-export function setLegendVisibility(v: boolean){
+export function setLegendVisibility(v: boolean) {
   legendVisible = v;
-  if(chart){ chart.options.plugins.legend.display = legendVisible; chart.update(); }
-  if(distChart){ distChart.options.plugins.legend.display = legendVisible; distChart.update(); }
-  if(avgChart){ avgChart.options.plugins.legend.display = legendVisible; avgChart.update(); }
+  [chart, distChart, avgChart].forEach(c => {
+    if (c) {
+      c.options.plugins.legend.display = legendVisible;
+      c.update();
+    }
+  });
 }
 
 export function isLegendVisible(){ return legendVisible; }
