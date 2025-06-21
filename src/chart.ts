@@ -112,6 +112,7 @@ export function renderChart(series: Series[], selectedNames: string[] = [], sect
         }
       },
       plugins:{
+        legend:{ display: legendVisible },
         tooltip:{
           mode:'index',
           intersect:false,
@@ -202,6 +203,16 @@ let distCtx: CanvasRenderingContext2D;
 let avgCtx: CanvasRenderingContext2D;
 let distChart: any = null;
 let avgChart: any = null;
+let legendVisible = false;
+
+export function setLegendVisibility(v: boolean){
+  legendVisible = v;
+  if(chart){ chart.options.plugins.legend.display = legendVisible; chart.update(); }
+  if(distChart){ distChart.options.plugins.legend.display = legendVisible; distChart.update(); }
+  if(avgChart){ avgChart.options.plugins.legend.display = legendVisible; avgChart.update(); }
+}
+
+export function isLegendVisible(){ return legendVisible; }
 
 export function initSectorCharts(opts:{distCtx:CanvasRenderingContext2D; avgCtx:CanvasRenderingContext2D;}){
   distCtx = opts.distCtx;
@@ -230,7 +241,7 @@ function renderSimpleChart(ctx:CanvasRenderingContext2D, chartRef:any, labels:st
   return new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,
     interaction:{mode:'nearest',intersect:false},
     scales:{x:{grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}},y:{title:{display:true,text:yLabel},grid:{color:'rgba(0,0,0,0.06)',borderDash:[4,2]}}},
-    plugins:{tooltip:{mode:'index',intersect:false,callbacks:{beforeBody(tooltipItems: TooltipItem<'line'>[]){
+    plugins:{legend:{display:legendVisible},tooltip:{mode:'index',intersect:false,callbacks:{beforeBody(tooltipItems: TooltipItem<'line'>[]){
       const lines:string[]=[];
       tooltipItems.forEach(item=>{
         const label=item.dataset?.label ?? '';

@@ -1,7 +1,7 @@
 import { fetchRaceSetup, fetchPositions, populateRaceSelector, settings, saveSettings, fetchLeaderboard } from './raceLoader';
 import { initChart, renderChart, Series, computeSectorTimes,
   initSectorCharts, renderDistancePerSector, renderSpeedPerSector,
-  clearSectorCharts, highlightChartLine } from './chart';
+  clearSectorCharts, highlightChartLine, setLegendVisibility } from './chart';
 import { initUI, updateUiWithRace, getClassInfo, getBoatId, getBoatNames, disableSelectors, showSectors, setComparisonMode, isComparisonMode, getComparisonBoats, setComparisonBoats, createUnifiedTable } from './ui';
 import { computeSeries, calculateBoatStatistics, averageSpeedsBySector, distancesBySector, applyMovingAverage } from './speedUtils';
 import { getColor } from './palette';
@@ -21,6 +21,7 @@ const avgCtx      = (document.getElementById('avgSectorChart') as HTMLCanvasElem
 const rawToggle   = document.getElementById('rawToggle') as HTMLInputElement;
 const compareToggle = document.getElementById('compareToggle') as HTMLInputElement;
 const sectorToggle = document.getElementById('sectorToggle') as HTMLInputElement;
+const legendToggle = document.getElementById('legendToggle') as HTMLInputElement;
 const smoothingSelect = document.getElementById('smoothing-selector') as HTMLSelectElement;
 const distInput   = document.getElementById('distInput') as HTMLInputElement;
 const percentileInput = document.getElementById('percentileInput') as HTMLInputElement;
@@ -159,6 +160,7 @@ compareToggle.addEventListener('change', () => {
 });
 sectorToggle.addEventListener('change', drawSectorPolygons);
 smoothingSelect.addEventListener('change', updateChartWithSelections);
+legendToggle.addEventListener('change', () => setLegendVisibility(legendToggle.checked));
 
 async function updateChartWithSelections(){
   if(!currentRace || !raceSetup) return;
@@ -269,6 +271,7 @@ async function init(){
   const races = await populateRaceSelector();
   if(!races.length) return;
   refreshDropdowns();
+  setLegendVisibility(legendToggle.checked);
   raceSelect.value = races[0].id;
   await loadRace(races[0].id);
   raceSelect.addEventListener('change', async () => {
